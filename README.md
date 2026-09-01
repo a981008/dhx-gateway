@@ -1,8 +1,18 @@
 # DHX Gateway(dhx-gateway)
 
-**DHX Gateway**(DeepSeek Harness eXchange)—— DeepSeek Harness 多用户网关:把单用户的 DSH Web 变成一台多人共用的服务。一个网关进程对外提供统一的登录入口,为每个用户按需拉起完全独立的 `dsh web` 上游实例,并在中间做经过认证的流式代理。
+**DHX Gateway**(DeepSeek Harness eXchange)是一个**独立的开源项目**,为 dsh(DeepSeek Harness)提供多用户网关插件:把单用户的 DSH Web 变成一台多人共用的服务。
 
-本目录是一个**独立项目**:自带 `package.json`、构建与测试脚本,不依赖所在仓库的任何门禁;运行时以 cordis 插件形式装入 `dsh` 的 profile。
+- **GitHub**:https://github.com/a981008/dhx-gateway
+- **形态**:[dsh(DeepSeek Harness)](https://github.com/a981008/deepseek-harness) 的 cordis 插件 —— npm 包 `dhx-gateway`,通过 dsh 的 profile patch 装入,不修改 dsh 任何源码
+- **工作方式**:一个网关进程对外提供统一的登录入口,为每个用户按需拉起完全独立的 `dsh web` 上游实例,并在中间做经过认证的流式代理
+
+```
+浏览器 ──登录/会话──▶ 网关(8080) ──按会话选路──▶ 用户A 的 dsh web(127.0.0.1:随机端口)
+                  │                              用户B 的 dsh web(127.0.0.1:随机端口)
+                  └──未登录一律重定向 /login         每人独立 DSH_HOME / 会话 / 工作区 / API Key
+```
+
+项目自带 `package.json`、构建与测试脚本与完整文档;依赖以 `link:` 指向同机的 deepseek-harness 检出(见[开发](#开发)一节)。
 
 ```
 浏览器 ──登录/会话──▶ 网关(8080) ──按会话选路──▶ 用户A 的 dsh web(127.0.0.1:随机端口)
@@ -280,7 +290,7 @@ dhx-gateway/
 
 - **构建/测试**:`./scripts/build.sh` 与 `./scripts/test.sh`(95/95),细节见[脚本一览](#脚本一览)。
 - **依赖形态**:运行时依赖(4 个)与构建/测试期类型依赖(3 个)都以 `link:` 指向 `deepseek-harness` 检出内的 `vendor/`、`packages/`,目标写成**相对路径**(`link:../deepseek-harness/...`),package.json 可直接提交。标准布局(兄弟目录)下克隆后 `pnpm install` + `./scripts/build.sh` 即可;检出不在 `../deepseek-harness` 时运行一次 `DSH_CHECKOUT=<检出路径> ./scripts/setup-deps.sh` 重新绑定。
-- **与 monorepo 包的关系**:`deepseek-harness/packages/host/multi-user-gateway` 是受仓库门禁(100% 覆盖率、双语 README、config-catalog 等)约束的实现源头,npm 名 `@deepseek-ai/dsh-host-multi-user-gateway`;本项目 **DHX Gateway**(npm 名 `dhx-gateway`)是从它派生的独立部署版,源码与 monorepo 包同源(仅命名与依赖形态不同),代码演进以 monorepo 包吃门禁后同步过来为准。
+- **与 dsh 的关系**:本项目是 **dsh(DeepSeek Harness)的插件**,以独立仓库演进(本仓库为主)。运行时通过 dsh 的扩展点接入:cordis 插件协议、webserver 路由注册、profile patch 组合;构建/测试期以 `link:` 使用 dsh 检出内的 `vendor/`、`packages/` 产物。源码历史上与 harness monorepo 内的 `packages/host/multi-user-gateway`(npm 名 `@deepseek-ai/dsh-host-multi-user-gateway`)同源,此后以本仓库为准独立演进。
 
 ## 许可证
 
