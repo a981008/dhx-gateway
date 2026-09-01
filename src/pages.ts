@@ -52,15 +52,15 @@ ${body}
  * @returns the page HTML.
  */
 export function loginPage(message: string | undefined): string {
-  return page('DSH Gateway — Sign in', `
-<h1>DSH Multi-User Gateway</h1>
+  return page('DSH 网关 — 登录', `
+<h1>DSH 多用户网关</h1>
 ${message === undefined ? '' : `<p class="error">${escapeHtml(message)}</p>`}
 <form method="post" action="/login">
-<label for="username">Username</label>
+<label for="username">账号</label>
 <input id="username" name="username" required autocapitalize="none" autocomplete="username">
-<label for="password">Password</label>
+<label for="password">密码</label>
 <input id="password" name="password" type="password" required autocomplete="current-password">
-<button type="submit">Sign in</button>
+<button type="submit">登录</button>
 </form>`)
 }
 
@@ -71,16 +71,16 @@ ${message === undefined ? '' : `<p class="error">${escapeHtml(message)}</p>`}
  * @returns the page HTML.
  */
 export function invitePage(token: string, message: string | undefined): string {
-  return page('DSH Gateway — Accept invite', `
-<h1>Create your account</h1>
-<p>This invite is single-use. Pick an account name and password.</p>
+  return page('DSH 网关 — 接受邀请', `
+<h1>创建你的账号</h1>
+<p>本邀请链接仅可使用一次,请设置账号名和密码。</p>
 ${message === undefined ? '' : `<p class="error">${escapeHtml(message)}</p>`}
 <form method="post" action="/invite/${encodeURIComponent(token)}">
-<label for="username">Username</label>
+<label for="username">账号</label>
 <input id="username" name="username" required autocapitalize="none" autocomplete="username">
-<label for="password">Password (at least 8 characters)</label>
+<label for="password">密码(至少 8 个字符)</label>
 <input id="password" name="password" type="password" required autocomplete="new-password">
-<button type="submit">Create account</button>
+<button type="submit">创建账号</button>
 </form>`)
 }
 
@@ -103,27 +103,27 @@ export function adminPage(
 ): string {
   const runningByUser = new Map(rows.running.map(row => [row.user, row.port]))
   const userRows = rows.users.map(user => `
-<tr><td><code>${escapeHtml(user.name)}</code></td><td>${user.admin ? 'admin' : ''}</td><td>${user.disabled ? 'disabled' : 'active'}</td>
-<td>${runningByUser.get(user.name) === undefined ? '' : `running on port ${String(runningByUser.get(user.name))}`}</td>
-<td><form method="post" action="/gw-admin/users/${user.disabled ? 'enable' : 'disable'}"><input type="hidden" name="name" value="${escapeHtml(user.name)}"><button class="danger" type="submit">${user.disabled ? 'Enable' : 'Disable'}</button></form></td></tr>`)
+<tr><td><code>${escapeHtml(user.name)}</code></td><td>${user.admin ? '管理员' : ''}</td><td>${user.disabled ? '已停用' : '正常'}</td>
+<td>${runningByUser.get(user.name) === undefined ? '' : `运行中(端口 ${String(runningByUser.get(user.name))})`}</td>
+<td><form method="post" action="/gw-admin/users/${user.disabled ? 'enable' : 'disable'}"><input type="hidden" name="name" value="${escapeHtml(user.name)}"><button class="danger" type="submit">${user.disabled ? '启用' : '停用'}</button></form></td></tr>`)
   const inviteRows = rows.invites.map(invite => `
-<tr><td><code>${escapeHtml(invite.id)}</code></td><td>${invite.bootstrap ? 'bootstrap' : 'admin'}</td><td>${escapeHtml(invite.createdAt)}</td>
-<td>${invite.expiresAt === undefined ? 'never' : escapeHtml(invite.expiresAt)}</td><td>${invite.usedBy === undefined ? 'unused' : escapeHtml(invite.usedBy)}</td>
-<td>${invite.usedBy === undefined ? `<form method="post" action="/gw-admin/invite/revoke"><input type="hidden" name="id" value="${escapeHtml(invite.id)}"><button class="danger" type="submit">Revoke</button></form>` : ''}</td></tr>`)
-  return page('DSH Gateway — Admin', `
-<h1>Gateway administration</h1>
+<tr><td><code>${escapeHtml(invite.id)}</code></td><td>${invite.bootstrap ? '引导' : '管理员'}</td><td>${escapeHtml(invite.createdAt)}</td>
+<td>${invite.expiresAt === undefined ? '永不过期' : escapeHtml(invite.expiresAt)}</td><td>${invite.usedBy === undefined ? '未使用' : escapeHtml(invite.usedBy)}</td>
+<td>${invite.usedBy === undefined ? `<form method="post" action="/gw-admin/invite/revoke"><input type="hidden" name="id" value="${escapeHtml(invite.id)}"><button class="danger" type="submit">撤销</button></form>` : ''}</td></tr>`)
+  return page('DSH 网关 — 管理台', `
+<h1>网关管理台</h1>
 ${notice === undefined ? '' : `<p class="notice">${notice}</p>`}
-<h2>Invite</h2>
+<h2>创建邀请</h2>
 <form method="post" action="/gw-admin/invite">
-<label for="ttl">Expires in minutes (empty: never)</label>
+<label for="ttl">有效期(分钟,留空永不过期)</label>
 <input id="ttl" name="ttlMinutes" inputmode="numeric">
-<button type="submit">Create invite</button>
+<button type="submit">创建邀请</button>
 </form>
-<h2>Invites</h2>
-<table><tr><th>Id</th><th>Kind</th><th>Created</th><th>Expires</th><th>Used by</th><th></th></tr>${inviteRows.join('')}</table>
-<h2>Users</h2>
-<table><tr><th>Name</th><th>Role</th><th>State</th><th>Upstream</th><th></th></tr>${userRows.join('')}</table>
-<p><form method="post" action="/logout"><button type="submit">Sign out</button></form></p>`)
+<h2>邀请列表</h2>
+<table><tr><th>ID</th><th>类型</th><th>创建时间</th><th>过期时间</th><th>使用者</th><th></th></tr>${inviteRows.join('')}</table>
+<h2>账号</h2>
+<table><tr><th>账号</th><th>角色</th><th>状态</th><th>上游</th><th></th></tr>${userRows.join('')}</table>
+<p><form method="post" action="/logout"><button type="submit">退出登录</button></form></p>`)
 }
 
 /**
@@ -133,11 +133,11 @@ ${notice === undefined ? '' : `<p class="notice">${notice}</p>`}
  * @returns the page HTML.
  */
 export function logoutPage(): string {
-  return page('DSH Gateway — Sign out', `
-<h1>Sign out</h1>
-<p>This signs you out of the gateway in this browser. Your workspace instance keeps running and your data stays in place.</p>
+  return page('DSH 网关 — 退出登录', `
+<h1>退出登录</h1>
+<p>将在此浏览器退出网关会话。你的工作区实例会继续运行,数据保持不变。</p>
 <form method="post" action="/logout">
-<button class="danger" type="submit">Sign out</button>
+<button class="danger" type="submit">退出登录</button>
 </form>`)
 }
 

@@ -88,7 +88,7 @@ describe('gateway when the upstream cannot start', () => {
     const response = await fetch(`${origin}/workspace`, { headers: admin.cookieHeader, redirect: 'manual' })
     expect(response.status).toBe(503)
     const text = await response.text()
-    expect(text).toContain('Upstream unavailable')
+    expect(text).toContain('上游不可用')
     expect(text).toContain('exited before its ready URL line')
   })
 })

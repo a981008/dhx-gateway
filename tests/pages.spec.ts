@@ -11,7 +11,7 @@ describe('gateway pages', () => {
     expect(plain).toContain('<form method="post" action="/login">')
     expect(plain).toContain('name="username"')
     expect(plain).toContain('type="password"')
-    expect(loginPage('Invalid username or password.')).toContain('Invalid username or password.')
+    expect(loginPage('账号或密码不正确。')).toContain('账号或密码不正确。')
   })
 
   it('renders the invite form with the encoded token', () => {
@@ -30,15 +30,15 @@ describe('gateway pages', () => {
         ],
         running: [{ user: 'alice', port: 4321 }],
       },
-      'New invite link: /invite/xyz',
+      '新邀请链接(仅显示一次): /invite/xyz',
     )
     expect(page).toContain('<code>alice</code>')
-    expect(page).toContain('running on port 4321')
+    expect(page).toContain('运行中(端口 4321)')
     expect(page).toContain('action="/gw-admin/users/disable"')
     expect(page).toContain('<code>abc123</code>')
     expect(page).toContain('action="/gw-admin/invite/revoke"')
-    expect(page).toContain('New invite link: /invite/xyz')
-    expect(page).toContain('<td>never</td>')
+    expect(page).toContain('新邀请链接(仅显示一次): /invite/xyz')
+    expect(page).toContain('<td>永不过期</td>')
     expect(page).toContain('<td>2026-02-01T00:00:00.000Z</td>')
     expect(page).toContain('<td>bob</td>')
   })
@@ -59,9 +59,9 @@ describe('gateway pages', () => {
 
   it('renders the sign-out confirmation with a POST form', () => {
     const page = logoutPage()
-    expect(page).toContain('<h1>Sign out</h1>')
+    expect(page).toContain('<h1>退出登录</h1>')
     expect(page).toContain('<form method="post" action="/logout">')
-    expect(page).toContain('Sign out')
+    expect(page).toContain('退出登录')
   })
 
   it('renders message pages with escaped bodies', () => {

@@ -104,7 +104,7 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
     try {
       return await readForm(req)
     } catch {
-      respondHtml(res, 413, messagePage('Request too large', 'The submitted form was too large.'))
+      respondHtml(res, 413, messagePage('请求过大', '提交的表单内容过大。'))
       return undefined
     }
   }
@@ -139,7 +139,7 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
       return undefined
     }
     if (!store.isUserAdmin(session.user)) {
-      respondHtml(res, 403, messagePage('Forbidden', 'This page is for gateway administrators.'))
+      respondHtml(res, 403, messagePage('无权访问', '该页面仅限网关管理员使用。'))
       return undefined
     }
     return session
@@ -165,7 +165,7 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
       res.end()
       return
     }
-    respondHtml(res, 401, loginPage('Invalid username or password.'))
+    respondHtml(res, 401, loginPage('账号或密码不正确。'))
   }
 
   const logoutHandler = (req: IncomingMessage, res: ServerResponse): void => {
@@ -207,12 +207,12 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
     const rawPath = new URL(req.url ?? '/', 'http://gateway.invalid').pathname
     const token = inviteTokenFromPath(rawPath)
     if (token === undefined) {
-      respondHtml(res, 404, messagePage('Invite required', 'Open the invite link an administrator shared with you.'))
+      respondHtml(res, 404, messagePage('需要邀请链接', '请打开管理员分享给你的邀请链接。'))
       return
     }
     const invite = store.describeInvite(token)
     if (!invite.usable) {
-      respondHtml(res, 404, messagePage('Invite invalid', 'This invite is unknown, already used, or expired. Ask an administrator for a new one.'))
+      respondHtml(res, 404, messagePage('邀请链接无效', '该邀请不存在、已被使用或已过期,请向管理员索取新的链接。'))
       return
     }
     if (req.method === 'GET') {
@@ -235,13 +235,13 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
       exhaustively mapped and acceptInvite rejects only with StoreError. */
       const message = error instanceof StoreError
         ? ({
-          'invalid-username': 'Account names use lowercase letters, digits, and dashes (at most 32 characters).',
-          'username-taken': 'That account name is already taken.',
-          'weak-password': 'Passwords need at least 8 characters.',
-          'invalid-invite': 'This invite is unknown, already used, or expired.',
-          'unknown-user': 'This invite is unknown, already used, or expired.',
-        } as Record<string, string>)[error.code] ?? 'The account could not be created.'
-        : 'The account could not be created.'
+          'invalid-username': '账号名只能使用小写字母、数字和短横线(最多 32 个字符)。',
+          'username-taken': '该账号名已被占用。',
+          'weak-password': '密码至少需要 8 个字符。',
+          'invalid-invite': '该邀请不存在、已被使用或已过期。',
+          'unknown-user': '该邀请不存在、已被使用或已过期。',
+        } as Record<string, string>)[error.code] ?? '创建账号失败,请重试。'
+        : '创建账号失败,请重试。'
       respondHtml(res, 400, invitePage(token, message))
     }
   }
@@ -266,27 +266,36 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
         const ttlRaw = form.get('ttlMinutes') ?? ''
         const ttlMinutes = ttlRaw === '' ? undefined : Number(ttlRaw)
         if (ttlMinutes !== undefined && (!(ttlMinutes > 0) || !Number.isFinite(ttlMinutes))) {
-          renderAdmin(res, 'Invite lifetime must be a positive number of minutes.')
+          renderAdmin(res, '邀请有效期必须是正整数分钟。')
           return
         }
         const token = await store.createInvite(ttlMinutes === undefined ? {} : { ttlMinutes })
-        renderAdmin(res, `New invite link (shown once): ${adminLinkOrigin()}/invite/${token}`)
+        renderAdmin(res, `新邀请链接(仅显示一次): ${adminLinkOrigin()}/invite/${token}`)
         return
       }
       if (rawPath === '/gw-admin/invite/revoke') {
         await store.revokeInvite(form.get('id') ?? '')
-        renderAdmin(res, 'Invite revoked.')
+        renderAdmin(res, '邀请已撤销。')
         return
       }
       if (rawPath === '/gw-admin/users/disable' || rawPath === '/gw-admin/users/enable') {
         const name = form.get('name') ?? ''
         await store.setDisabled(name, rawPath === '/gw-admin/users/disable')
-        renderAdmin(res, `Account ${JSON.stringify(name)} updated.`)
+        renderAdmin(res, `账号 ${JSON.stringify(name)} 已更新。`)
         return
       }
-      respondHtml(res, 404, messagePage('Unknown action', 'The submitted admin action does not exist.'))
+      respondHtml(res, 404, messagePage('未知操作', '提交的管理操作不存在。'))
     } catch (error) {
-      const detail = error instanceof StoreError ? error.message : 'The action failed.'
+      // StoreError 的 message 是日志诊断(英文);页面统一按错误码给中文提示。
+      const detail = error instanceof StoreError
+        ? ({
+          'invalid-username': '账号名只能使用小写字母、数字和短横线(最多 32 个字符)。',
+          'username-taken': '该账号名已被占用。',
+          'weak-password': '密码至少需要 8 个字符。',
+          'invalid-invite': '邀请 ID 与现有邀请不匹配,请刷新页面后重试。',
+          'unknown-user': '该账号不存在,请刷新页面后重试。',
+        } as Record<string, string>)[error.code] ?? '操作失败,请重试。'
+        : '操作失败,请重试。'
       renderAdmin(res, detail)
     }
   }
@@ -334,7 +343,7 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
       // next request re-acquires, and answer 401 for this one.
       jar.clear(sid)
       res.writeHead(401, { 'content-type': 'text/plain; charset=utf-8' })
-      res.end('dhx-gateway: the upstream session expired; reload the page')
+      res.end('dhx-gateway: 上游会话已过期,请刷新页面重试')
     }
   }
 
@@ -354,7 +363,7 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
       token = endpoint.token
     } catch (error) {
       log(`start failed for ${session.user}: ${(error as Error).message}`)
-      respondHtml(res, 503, messagePage('Upstream unavailable', `Your workspace instance could not start: ${(error as Error).message}`))
+      respondHtml(res, 503, messagePage('上游不可用', `工作区实例无法启动:${(error as Error).message}`))
       return
     }
     try {

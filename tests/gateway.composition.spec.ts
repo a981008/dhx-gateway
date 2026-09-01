@@ -116,7 +116,7 @@ describe('multi-user gateway over a real composition', () => {
     expect(api.status).toBe(401)
     const login = await fetch(`${origin}/login`)
     expect(login.status).toBe(200)
-    expect(await login.text()).toContain('Sign in')
+    expect(await login.text()).toContain('登录')
   })
 
   it('prints a single-use bootstrap invite that creates the admin account', async () => {
@@ -136,7 +136,7 @@ describe('multi-user gateway over a real composition', () => {
   it('rejects a bad login', async () => {
     const response = await formPost(origin, '/login', { username: 'ghost', password: 'nope-nope' })
     expect(response.status).toBe(401)
-    expect(await response.text()).toContain('Invalid username or password.')
+    expect(await response.text()).toContain('账号或密码不正确。')
   })
 
   it('answers method mismatches and empty forms on the named routes', async () => {
@@ -171,44 +171,44 @@ describe('multi-user gateway over a real composition', () => {
   it('accepts malformed invite tokens with the generic invalid page', async () => {
     const badEncoding = await fetch(`${origin}/invite/%zz`, { redirect: 'manual' })
     expect(badEncoding.status).toBe(404)
-    expect(await badEncoding.text()).toContain('Invite required')
+    expect(await badEncoding.text()).toContain('需要邀请链接')
   })
 
   it('rejects invite form mistakes without consuming the invite', async () => {
     // Mint a fresh invite for the form-error tests.
     const invited = await formPost(origin, '/gw-admin/invite', { ttlMinutes: '30' }, admin)
-    const invitePath = new URL((await invited.text()).match(/New invite link \(shown once\): (\S+?)<\//)?.[1] as string).pathname
+    const invitePath = new URL((await invited.text()).match(/新邀请链接\(仅显示一次\): (\S+?)<\//)?.[1] as string).pathname
     const put = await fetch(`${origin}${invitePath}`, { method: 'PUT', redirect: 'manual' })
     expect(put.status).toBe(405)
     const empty = await formPost(origin, invitePath, {})
     expect(empty.status).toBe(400)
-    expect(await empty.text()).toContain('lowercase letters, digits, and dashes')
+    expect(await empty.text()).toContain('小写字母、数字和短横线')
     const weak = await formPost(origin, invitePath, { username: 'form-test', password: 'short' })
     expect(weak.status).toBe(400)
-    expect(await weak.text()).toContain('Passwords need at least 8 characters.')
+    expect(await weak.text()).toContain('密码至少需要 8 个字符。')
     const badName = await formPost(origin, invitePath, { username: 'Bad Name', password: 'long enough' })
     expect(badName.status).toBe(400)
-    expect(await badName.text()).toContain('lowercase letters, digits, and dashes')
+    expect(await badName.text()).toContain('小写字母、数字和短横线')
     const taken = await formPost(origin, invitePath, { username: 'root', password: 'long enough' })
     expect(taken.status).toBe(400)
-    expect(await taken.text()).toContain('already taken')
+    expect(await taken.text()).toContain('已被占用')
     // The invite survived every rejection and is still usable.
     const page = await fetch(`${origin}${invitePath}`)
     expect(page.status).toBe(200)
     const oversizedInvite = await formPost(origin, invitePath, { username: 'x'.repeat(40_000), password: 'x' })
     expect(oversizedInvite.status).toBe(413)
-    expect(await oversizedInvite.text()).toContain('Request too large')
+    expect(await oversizedInvite.text()).toContain('请求过大')
   })
 
   it('answers the generic failure message when persistence fails', async () => {
     if (process.platform === 'win32') return
     // Mint the invite to accept while the store still persists.
     const invited = await formPost(origin, '/gw-admin/invite', {}, admin)
-    const invitePath = new URL((await invited.text()).match(/New invite link \(shown once\): (\S+?)<\//)?.[1] as string).pathname
+    const invitePath = new URL((await invited.text()).match(/新邀请链接\(仅显示一次\): (\S+?)<\//)?.[1] as string).pathname
     // A second invite to revoke: the failed persist keeps the in-memory
     // deletion, so revoking a different row keeps this one alive.
     const second = await formPost(origin, '/gw-admin/invite', {}, admin)
-    const secondPath = new URL((await second.text()).match(/New invite link \(shown once\): (\S+?)<\//)?.[1] as string).pathname
+    const secondPath = new URL((await second.text()).match(/新邀请链接\(仅显示一次\): (\S+?)<\//)?.[1] as string).pathname
     // Making the state root read-only fails every store persist with a plain
     // filesystem error, which the routes must not leak as an internal detail.
     chmodSync(stateRoot, 0o500)
@@ -216,10 +216,10 @@ describe('multi-user gateway over a real composition', () => {
       const secondId = createHash('sha256').update(decodeURIComponent(secondPath.slice('/invite/'.length)), 'utf8').digest('hex').slice(0, 12)
       const revoked = await formPost(origin, '/gw-admin/invite/revoke', { id: secondId }, admin)
       expect(revoked.status).toBe(200)
-      expect(await revoked.text()).toContain('The action failed.')
+      expect(await revoked.text()).toContain('操作失败,请重试。')
       const rejected = await formPost(origin, invitePath, { username: 'boxed', password: 'long enough' })
       expect(rejected.status).toBe(400)
-      expect(await rejected.text()).toContain('The account could not be created.')
+      expect(await rejected.text()).toContain('创建账号失败,请重试。')
     } finally {
       chmodSync(stateRoot, 0o700)
     }
@@ -229,7 +229,7 @@ describe('multi-user gateway over a real composition', () => {
     const oversized = 'x'.repeat(40_000)
     const login = await formPost(origin, '/login', { username: oversized, password: 'x' })
     expect(login.status).toBe(413)
-    expect(await login.text()).toContain('Request too large')
+    expect(await login.text()).toContain('请求过大')
   })
 
   it('gives a signed-in but unknown or broken session the login page', async () => {
@@ -257,19 +257,19 @@ describe('multi-user gateway over a real composition', () => {
     expect(anonymousPost.status).toBe(303)
     const unknownAction = await formPost(origin, '/gw-admin/does-not-exist', {}, admin)
     expect(unknownAction.status).toBe(404)
-    expect(await unknownAction.text()).toContain('Unknown action')
+    expect(await unknownAction.text()).toContain('未知操作')
     const badTtl = await formPost(origin, '/gw-admin/invite', { ttlMinutes: 'abc' }, admin)
-    expect(await badTtl.text()).toContain('Invite lifetime must be a positive number of minutes.')
+    expect(await badTtl.text()).toContain('邀请有效期必须是正整数分钟。')
     const zeroTtl = await formPost(origin, '/gw-admin/invite', { ttlMinutes: '0' }, admin)
-    expect(await zeroTtl.text()).toContain('Invite lifetime must be a positive number of minutes.')
+    expect(await zeroTtl.text()).toContain('邀请有效期必须是正整数分钟。')
     const infiniteTtl = await formPost(origin, '/gw-admin/invite', { ttlMinutes: 'Infinity' }, admin)
-    expect(await infiniteTtl.text()).toContain('Invite lifetime must be a positive number of minutes.')
+    expect(await infiniteTtl.text()).toContain('邀请有效期必须是正整数分钟。')
     const oversizedAdmin = await formPost(origin, '/gw-admin/invite', { payload: 'x'.repeat(40_000) }, admin)
     expect(oversizedAdmin.status).toBe(413)
     const missingName = await formPost(origin, '/gw-admin/users/disable', {}, admin)
-    expect(await missingName.text()).toContain('does not exist')
+    expect(await missingName.text()).toContain('该账号不存在,请刷新页面后重试。')
     const missingId = await formPost(origin, '/gw-admin/invite/revoke', {}, admin)
-    expect(await missingId.text()).toContain('does not match exactly one invite')
+    expect(await missingId.text()).toContain('邀请 ID 与现有邀请不匹配')
   })
 
   it('proxies the admin session to a per-user upstream with rewritten headers', async () => {
@@ -317,7 +317,7 @@ describe('multi-user gateway over a real composition', () => {
       redirect: 'manual',
     })
     expect(stalePost.status).toBe(401)
-    expect(await stalePost.text()).toContain('expired')
+    expect(await stalePost.text()).toContain('上游会话已过期')
     const reacquired = await fetch(`${origin}/expire/4`, { headers: admin.cookieHeader })
     expect(reacquired.status).toBe(200)
   })
@@ -339,11 +339,11 @@ describe('multi-user gateway over a real composition', () => {
     expect(dashboard.status).toBe(200)
     const dashboardHtml = await dashboard.text()
     expect(dashboardHtml).toContain('<code>root</code>')
-    expect(dashboardHtml).toContain('running on port')
+    expect(dashboardHtml).toContain('运行中(端口')
 
     const invited = await formPost(origin, '/gw-admin/invite', { ttlMinutes: '' }, admin)
     expect(invited.status).toBe(200)
-    const notice = (await invited.text()).match(/New invite link \(shown once\): (\S+?)<\//)
+    const notice = (await invited.text()).match(/新邀请链接\(仅显示一次\): (\S+?)<\//)
     expect(notice).not.toBeNull()
     const invitePath = new URL(notice?.[1] as string).pathname
 
@@ -358,7 +358,7 @@ describe('multi-user gateway over a real composition', () => {
 
   it('revokes unused invites from the dashboard', async () => {
     const invited = await formPost(origin, '/gw-admin/invite', {}, admin)
-    const invitePath = new URL((await invited.text()).match(/New invite link \(shown once\): (\S+?)<\//)?.[1] as string).pathname
+    const invitePath = new URL((await invited.text()).match(/新邀请链接\(仅显示一次\): (\S+?)<\//)?.[1] as string).pathname
     const token = decodeURIComponent(invitePath.slice('/invite/'.length))
     const liveId = createHash('sha256').update(token, 'utf8').digest('hex').slice(0, 12)
     const revoked = await formPost(origin, '/gw-admin/invite/revoke', { id: liveId }, admin)
@@ -381,7 +381,7 @@ describe('multi-user gateway over a real composition', () => {
     expect(confirmPage.status).toBe(200)
     const page = await confirmPage.text()
     expect(page).toContain('<form method="post" action="/logout">')
-    expect(page).toContain('Sign out')
+    expect(page).toContain('退出登录')
     const anonymous = await fetch(`${origin}/logout`, { redirect: 'manual' })
     expect(anonymous.status).toBe(303)
     expect(anonymous.headers.get('location')).toBe('/login')
