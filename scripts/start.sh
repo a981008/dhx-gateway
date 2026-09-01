@@ -1,19 +1,23 @@
 #!/bin/sh
 # 启动 DHX Gateway(后台守护运行)。
 # 用法: scripts/start.sh
-# 环境变量(均有默认值,见下;启动子进程时仍以内部 DSH_HOME 指向该目录):
-#   DSH_CHECKOUT  deepseek-harness 检出根;默认从脚本位置推断(项目位于检出内时)
-#   DSH_HOME_DEPLOY 网关数据主目录;默认 <DSH_CHECKOUT>/.dsh-home(变量名避开 harness 自身的 DSH_HOME)
+# 环境变量(均有默认值,见下):
+#   DSH_CHECKOUT  deepseek-harness 检出根;由 dsh-checkout.sh 自动定位
+#   DSH_DATA      网关数据与运行档案目录;默认 <项目根>/data
+#   DSH_HOME      传给网关进程的 dsh 主目录(profiles 所在,属 dsh 侧);
+#                 默认 <DSH_CHECKOUT>/.dsh-home。注意:外层环境若已导出 DSH_HOME
+#                 (例如 dsh 桌面端),必须在此显式覆盖,否则 profile 会找不到。
 #   DSH_PROFILE   profile 名;默认 gateway
-# 日志: <DSH_HOME>/gateway.log   PID: <DSH_HOME>/gateway.pid
+# 日志: <DSH_DATA>/gateway.log   PID: <DSH_DATA>/gateway.pid
 set -e
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DSH_CHECKOUT=$(cd "$PROJECT_ROOT" && ./scripts/dsh-checkout.sh)
-DSH_HOME=${DSH_HOME_DEPLOY:-"$DSH_CHECKOUT/.dsh-home"}
+DSH_DATA=${DSH_DATA:-"$PROJECT_ROOT/data"}
+DSH_HOME=${DSH_HOME:-"$DSH_CHECKOUT/.dsh-home"}
 DSH_PROFILE=${DSH_PROFILE:-gateway}
-PID_FILE="$DSH_HOME/gateway.pid"
-LOG_FILE="$DSH_HOME/gateway.log"
-mkdir -p "$DSH_HOME"
+PID_FILE="$DSH_DATA/gateway.pid"
+LOG_FILE="$DSH_DATA/gateway.log"
+mkdir -p "$DSH_DATA"
 
 if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
   echo "DHX Gateway already running (pid $(cat "$PID_FILE"))"

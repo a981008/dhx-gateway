@@ -52,7 +52,7 @@ cd ~/git/dhx-gateway
 
 ```sh
 cd ~/git/deepseek-harness
-export DSH_HOME="$PWD/.dsh-home"     # 部署主目录:账号、每用户数据、profile 都在这里
+export DSH_HOME="$PWD/.dsh-home"     # dsh 主目录:profile(组合定义)在这里;插件数据默认在项目 data/ 下
 pnpm dsh plugin --profile gateway add ~/git/dhx-gateway
 ```
 
@@ -115,13 +115,14 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 | 变量 | 作用于 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `DSH_CHECKOUT` | 全部 | 自动定位(见上) | deepseek-harness 检出根 |
-| `DSH_HOME_DEPLOY` | `start.sh` / `stop.sh` | `<DSH_CHECKOUT>/.dsh-home` | 网关数据主目录(变量名避开 harness 自身的 `DSH_HOME`) |
+| `DSH_DATA` | `start.sh` / `stop.sh` | `<项目根>/data` | 网关数据与运行档案目录(gateway.log / gateway.pid / 默认 stateRoot)。变量名避开 harness 自身的 `DSH_HOME` |
+| `DSH_HOME` | `start.sh` | `<DSH_CHECKOUT>/.dsh-home` | 传给网关进程的 dsh 主目录(profiles 所在,属 dsh 侧)。外层环境若已导出 `DSH_HOME`,必须显式覆盖 | 
 | `DSH_PROFILE` | `start.sh` | `gateway` | 要启动的 profile 名 |
 
 ### 启动方式与产物
 
 - `start.sh` 的启动方式:存在 `<DSH_CHECKOUT>/apps/cli/src/bin.ts` 时用 `node --import tsx/esm` 源启动;否则若 `dsh` 在 PATH 上则用 `dsh --profile <name>`;两者皆无时报错退出。
-- 日志追加到 `<DSH_HOME>/gateway.log`;PID 写入 `<DSH_HOME>/gateway.pid`。
+- 日志追加到 `<DSH_DATA>/gateway.log`;PID 写入 `<DSH_DATA>/gateway.pid`;`stop.sh` 只读同一 `DSH_DATA`。
 - SIGTERM 会触发网关的完整回收:停止所有用户上游进程、落盘状态后再退出。
 - `setup-deps.sh` 把全部 link 目标按指定检出的**相对路径**改写(`package.json` 保持可提交),并校验每个目标确为检出内的包,然后 `pnpm install --prod`。
 
@@ -132,7 +133,7 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `dshCommand` | `string[]` | 必填 | 启动每个用户上游的命令与参数;网关会自动追加 `--host 127.0.0.1 --port 0 --no-open`。正常安装用 `['dsh', 'web']`;从检出源码运行时用 `['<检出>/node_modules/.bin/tsx', '<检出>/apps/cli/src/bin.ts', 'web']`。 |
-| `stateRoot` | `string` | `<DSH_HOME>/dhx-gateway` | 网关持久状态根目录(账号库、密钥、会话撤销)。支持 `~` 展开。 |
+| `stateRoot` | `string` | `<项目根>/data` | 网关持久状态根目录(账号库、密钥、会话撤销)。**默认在项目自己的 data/ 目录下,不在 dsh 安装内**;支持 `~` 与绝对路径覆盖。 |
 | `usersRoot` | `string` | `<stateRoot>/users` | 每用户数据根目录;`<usersRoot>/<用户名>/home` 是该用户上游的 `DSH_HOME`,`<usersRoot>/<用户名>/workspaces` 是其默认工作区。 |
 | `sessionMaxAgeDays` | `number` | `30` | 网关会话 Cookie 有效期(天),上限 3650。 |
 | `idleStopMinutes` | `number` | 不停止 | 上游空闲多少分钟后自动停止该用户的实例;省内存。省略则永不停止。 |
@@ -174,16 +175,24 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 
 ### 数据布局(默认)
 
+插件生成的数据**全部归项目自己所有**,默认在项目根的 `data/` 下;dsh 安装内只有组合定义(profile):
+
 ```
-<DSH_HOME>/
-├── profiles/gateway/          # 组合定义(package.json + cordis.patch.yml + 装入的依赖)
-└── dhx-gateway/              # stateRoot
-    ├── users.json             # 账号库(scrypt 哈希 + 邀请码)
-    ├── secret                 # 会话签名密钥(首次启动生成;备份它 = 不失效所有会话)
+dhx-gateway/                       # 本项目
+└── data/                          # stateRoot(插件数据根;DSH_DATA 可改到任意位置)
+    ├── gateway.log                # 运行日志(启停脚本写入)
+    ├── gateway.pid                # 运行 PID(启停脚本写入)
+    ├── users.json                 # 账号库(scrypt 哈希 + 邀请码)
+    ├── secret.key                 # 会话签名密钥(首次启动生成;备份它 = 不失效所有会话)
     └── users/<name>/
-        ├── home/              # 该用户的 DSH_HOME(profiles/web、storages、凭据)
-        └── workspaces/        # 该用户上游的默认工作区
+        ├── home/                  # 该用户的 DSH_HOME(profiles/web、storages、凭据)
+        └── workspaces/            # 该用户上游的默认工作区
+
+<DSH_HOME>/                        # dsh 安装侧(不是插件数据)
+└── profiles/gateway/              # 组合定义(package.json + cordis.patch.yml + 装入的依赖)
 ```
+
+把 `stateRoot`(patch 配置)或 `DSH_DATA`(启停脚本)指向任意可写路径,即可把数据放到项目之外。
 
 ### 启停与日志
 
@@ -201,8 +210,8 @@ DSH_HOME_DEPLOY=/srv/dhx DSH_PROFILE=gateway scripts/start.sh
 
 ### 备份与迁移
 
-- 备份 `stateRoot` 即备份全部账号与邀请;每用户数据在 `usersRoot`。
-- 迁移机器:拷贝 `<DSH_HOME>`,新机上保持 `DSH_HOME` 指向它即可;密钥随迁,旧会话不失效。
+- 备份 `data/` 目录即备份全部账号、邀请、密钥与每用户数据。
+- 迁移机器:整个项目目录(含 `data/`)拷走即可 —— 密钥随迁,旧会话不失效;数据与 dsh 安装互相独立。
 
 ### 升级插件
 

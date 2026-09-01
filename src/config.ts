@@ -5,15 +5,19 @@
  * @module
  */
 
-import { join, resolve } from 'node:path'
-import { expandHomePath, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { realpathSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { expandHomePath } from '@deepseek-ai/dsh-home-paths'
+import { fileURLToPath } from 'node:url'
 import z from '@deepseek-ai/schemastery'
 
 /** Raw plugin config accepted from `cordis.yml`. */
 export interface Config {
   /**
    * Absolute root holding the account store and the gateway signing secret.
-   * Default: `<DSH_HOME>/dhx-gateway`.
+   * Default: `<project root>/data` — the directory owning this package, not
+   * anything inside the dsh installation. Set an absolute or `~` path to
+   * place the data elsewhere.
    */
   stateRoot?: string
   /**
@@ -69,6 +73,16 @@ export interface ResolvedConfig {
 const DEFAULT_SESSION_MAX_AGE_DAYS = 30
 const DEFAULT_START_TIMEOUT_MS = 30_000
 const MAX_SESSION_MAX_AGE_DAYS = 3650
+const DEFAULT_DATA_DIRNAME = 'data'
+
+/**
+ * Project root owning this module, resolved through symlinks so the default
+ * data root follows the real project directory even when the package is
+ * loaded through a profile's `node_modules` symlink.
+ */
+function packageRoot(): string {
+  return dirname(dirname(realpathSync(fileURLToPath(import.meta.url))))
+}
 
 function resolveConfigPath(value: string): string {
   return resolve(expandHomePath(value))
@@ -87,11 +101,12 @@ function isPositiveSafeInteger(value: number): boolean {
  * load, because a gateway that starts with an unusable launch command, port
  * policy, or state root would fail later in a harder-to-diagnose way.
  * @param config - raw config validated by the schemastery schema.
- * @param env - environment mapping used to resolve the default state root.
+ * @param env - unused today; kept for call-site symmetry and future default sources.
  * @returns the resolved config used by every gateway component.
  */
 export function resolveConfig(config: Config, env: Record<string, string | undefined> = process.env): ResolvedConfig {
-  const stateRoot = resolveConfigPath(config.stateRoot ?? join(resolveDshHome(undefined, env), 'dhx-gateway'))
+  void env
+  const stateRoot = resolveConfigPath(config.stateRoot ?? join(packageRoot(), DEFAULT_DATA_DIRNAME))
   const usersRoot = resolveConfigPath(config.usersRoot ?? join(stateRoot, 'users'))
   if (config.dshCommand.length === 0) fail('dshCommand', 'must be a non-empty argv array')
   for (const part of config.dshCommand) {

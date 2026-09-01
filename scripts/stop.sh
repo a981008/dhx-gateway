@@ -1,11 +1,10 @@
 #!/bin/sh
 # 停止 DHX Gateway:SIGTERM 优雅退出(等待最多 5 秒),超时强杀。
-# 用法: scripts/stop.sh
+# 用法: scripts/stop.sh(数据目录用 DSH_DATA 覆盖,默认 <项目根>/data)
 set -e
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DSH_CHECKOUT=$(cd "$PROJECT_ROOT" && ./scripts/dsh-checkout.sh)
-DSH_HOME=${DSH_HOME_DEPLOY:-"$DSH_CHECKOUT/.dsh-home"}
-PID_FILE="$DSH_HOME/gateway.pid"
+DSH_DATA=${DSH_DATA:-"$PROJECT_ROOT/data"}
+PID_FILE="$DSH_DATA/gateway.pid"
 
 if [ ! -f "$PID_FILE" ]; then
   echo "DHX Gateway not running (no pid file at $PID_FILE)"

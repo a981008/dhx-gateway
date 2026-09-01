@@ -1,8 +1,12 @@
 import { mkdtempSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { resolveConfig, type Config } from '../src/config.ts'
+
+/** Project root, computed the same way the plugin computes it from src/. */
+const PROJECT_ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 
 function base(): Config {
   return { dshCommand: ['dsh', 'web'] }
@@ -22,10 +26,11 @@ function configErrorOf(candidate: Config): string {
 }
 
 describe('gateway config resolution', () => {
-  it('materializes defaults under the harness home', () => {
+  it('materializes defaults under the project-owned data directory', () => {
     const resolved = resolveConfig(base(), { DSH_HOME: '/tmp/gateway-home' })
-    expect(resolved.stateRoot).toBe(join('/tmp/gateway-home', 'dhx-gateway'))
-    expect(resolved.usersRoot).toBe(join('/tmp/gateway-home', 'dhx-gateway', 'users'))
+    expect(resolved.stateRoot).toBe(join(PROJECT_ROOT, 'data'))
+    expect(resolved.stateRoot).not.toContain('/tmp/gateway-home')
+    expect(resolved.usersRoot).toBe(join(PROJECT_ROOT, 'data', 'users'))
     expect(resolved.dshCommand).toEqual(['dsh', 'web'])
     expect(resolved.sessionMaxAgeDays).toBe(30)
     expect(resolved.startTimeoutMs).toBe(30_000)
