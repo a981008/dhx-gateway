@@ -3,7 +3,7 @@
 **DHX Gateway**(DeepSeek Harness eXchange)是一个**独立的开源项目**,为 dsh(DeepSeek Harness)提供多用户网关插件:把单用户的 DSH Web 变成一台多人共用的服务。
 
 - **GitHub**:https://github.com/a981008/dhx-gateway
-- **形态**:[dsh(DeepSeek Harness)](https://github.com/a981008/deepseek-harness) 的 cordis 插件 —— npm 包 `dhx-gateway`,通过 dsh 的 profile patch 装入,不修改 dsh 任何源码
+- **形态**:`dsh`(DeepSeek Harness)的 cordis 插件 —— npm 包 `dhx-gateway`,通过 dsh 的 profile patch 装入,不修改 dsh 任何源码
 - **工作方式**:一个网关进程对外提供统一的登录入口,为每个用户按需拉起完全独立的 `dsh web` 上游实例,并在中间做经过认证的流式代理
 
 ```
@@ -14,17 +14,11 @@
 
 项目自带 `package.json`、构建与测试脚本与完整文档;依赖以 `link:` 指向同机的 deepseek-harness 检出(见[开发](#开发)一节)。
 
-```
-浏览器 ──登录/会话──▶ 网关(8080) ──按会话选路──▶ 用户A 的 dsh web(127.0.0.1:随机端口)
-                  │                              用户B 的 dsh web(127.0.0.1:随机端口)
-                  └──未登录一律重定向 /login         每人独立 DSH_HOME / 会话 / 工作区 / API Key
-```
-
 ## 功能特性
 
 - **内置账号**:用户名 + 密码(scrypt 加盐哈希持久化),不依赖任何外部身份系统。
 - **邀请制开号**:管理员在 `/gw-admin` 签发一次性邀请链接;首次启动存在引导邀请用于认领管理员。
-- **签名会话**:`dhxgw_session` HttpOnly Cookie,HMAC-SHA256 签名,默认 30 天有效。
+- **签名会话**:`dhxgw_session` HttpOnly Cookie,HMAC-SHA256 签名(无服务端会话表,重启不失效),默认 30 天有效。
 - **每用户完全隔离**:每个账号拥有独立的 `DSH_HOME`(配置、会话、凭据)与默认工作区;上游进程只绑定回环地址,外界无法绕过网关直连。
 - **自带密钥(BYOK)**:网关不持有任何用户的 `DEEPSEEK_API_KEY`——它不会下发给子进程,每个用户在自己 GUI 的凭据设置里配置。
 - **流式代理**:支持 SSE 流式响应;Host 重写 + Origin/Referer 剥离,满足上游的信任栅栏,无需在上游配置 `trustedHosts`。
@@ -133,7 +127,7 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `dshCommand` | `string[]` | 必填 | 启动每个用户上游的命令与参数;网关会自动追加 `--host 127.0.0.1 --port 0 --no-open`。正常安装用 `['dsh', 'web']`;从检出源码运行时用 `['<检出>/node_modules/.bin/tsx', '<检出>/apps/cli/src/bin.ts', 'web']`。 |
-| `stateRoot` | `string` | `<项目根>/data` | 网关持久状态根目录(账号库、密钥、会话撤销)。**默认在项目自己的 data/ 目录下,不在 dsh 安装内**;支持 `~` 与绝对路径覆盖。 |
+| `stateRoot` | `string` | `<项目根>/data` | 网关持久状态根目录(账号库、签名密钥、每用户数据)。**默认在项目自己的 data/ 目录下,不在 dsh 安装内**;支持 `~` 与绝对路径覆盖。 |
 | `usersRoot` | `string` | `<stateRoot>/users` | 每用户数据根目录;`<usersRoot>/<用户名>/home` 是该用户上游的 `DSH_HOME`,`<usersRoot>/<用户名>/workspaces` 是其默认工作区。 |
 | `sessionMaxAgeDays` | `number` | `30` | 网关会话 Cookie 有效期(天),上限 3650。 |
 | `idleStopMinutes` | `number` | 不停止 | 上游空闲多少分钟后自动停止该用户的实例;省内存。省略则永不停止。 |
@@ -149,8 +143,8 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 ### 账号与邀请
 
 - **引导邀请**:账号库为空时每次启动都会打印(同一密钥派生,token 在整个空库期间稳定),打开即建管理员,仅可用一次。
-- **邀请同事**:管理员登录后访问 `/gw-admin` → 新建邀请。每条链接只显示一次、只能建一个账号、不设过期(删除即作废)。
-- **停用账号**:`/gw-admin` 删除账号;其会话立即失效,上游进程被停止,数据保留在 `usersRoot`(可随时重建同名账号)。
+- **邀请同事**:管理员登录后访问 `/gw-admin` → 新建邀请(可选有效期分钟数,留空永不过期)。每条链接只显示一次、只能建一个账号;作废用「撤销」。
+- **停用/启用账号**:`/gw-admin` 停用账号 —— 登录立即被拒,既有网关会话在下一个请求失效(网关不再代理,空闲中的上游随后自动停止);数据保留在 `usersRoot`,随时可重新启用。
 - **密码**:存储为 scrypt(N=16384, r=8, p=1)加盐哈希;数据库文件 `stateRoot/users.json`。
 
 ### 保留路径
@@ -167,7 +161,7 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 
 ### 代理行为
 
-- 每个网关会话在服务端持有对应该用户上游的 Cookie jar,浏览器只见到 `dshgw_session`。
+- 每个网关会话在服务端持有对应该用户上游的 Cookie jar,浏览器只见到 `dhxgw_session`。
 - 请求到达上游时 Host 改写为上游地址、`Origin`/`Referer` 剥离——上游按同源信任处理,无需 `trustedHosts`。
 - SSE/长连接透传,不缓冲;仅无体的 GET/HEAD 在 401 时自动重试一次(会话过期自愈)。
 
@@ -201,11 +195,11 @@ scripts/start.sh   # 后台守护启动;已在运行则提示后原样退出
 scripts/stop.sh    # SIGTERM 优雅退出(最多 5 秒),超时 SIGKILL
 ```
 
-日志:`<DSH_HOME>/gateway.log`(追加);PID:`<DSH_HOME>/gateway.pid`。参数与环境变量见[脚本一览](#脚本一览)。
+日志:`<DSH_DATA>/gateway.log`(追加);PID:`<DSH_DATA>/gateway.pid`。参数与环境变量见[脚本一览](#脚本一览)。
 
 ```sh
-# 自定义示例:独立数据目录 + 其他 profile
-DSH_HOME_DEPLOY=/srv/dhx DSH_PROFILE=gateway scripts/start.sh
+# 自定义示例:数据目录放项目外 + 其他 profile
+DSH_DATA=/srv/dhx/data DSH_PROFILE=gateway scripts/start.sh
 ```
 
 ### 备份与迁移
@@ -248,18 +242,24 @@ dsh.example.com {
 
 ```ini
 [Unit]
-Description=DSH Multi-User Gateway
+Description=DHX Gateway (dsh multi-user gateway plugin)
 After=network.target
 
 [Service]
 Type=simple
+# 检出根(dsh 源码启动的运行目录)
 WorkingDirectory=/home/wang/git/deepseek-harness
+# dsh 主目录(profiles 所在);不设则用 invoking 用户的默认主目录
 Environment=DSH_HOME=/home/wang/git/deepseek-harness/.dsh-home
 ExecStart=/usr/bin/node --import tsx/esm apps/cli/src/bin.ts --profile gateway
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
+
+插件数据默认写在项目根 `data/`(与 systemd 无关);要用其他位置,
+在 patch 里设 `stateRoot` 或加一行 `Environment=DSH_DATA=/srv/dhx/data`
+并让启停脚本使用同一目录。
 ```
 
 ### WSL 注意
@@ -283,6 +283,8 @@ WSL2 NAT 网络模式下,局域网设备可能无法直达 WSL 内的端口:需�
 | 请求偶发 502/504 | 上游崩溃进入冷却重启;查 `<usersRoot>/<user>/home` 内的日志与网关日志。 |
 | 启动不打印邀请 | 账号库已有用户(正常);或 `printBootstrapInvite: false`。 |
 | `dshCommand` 找不到可执行 | 该命令以**绝对路径**解析最稳(网关以用户工作区为 cwd 拉起子进程)。 |
+| 启动即报 `profile "gateway" does not exist` | 外层环境已导出 `DSH_HOME`(例如 dsh 桌面端),启动脚本/服务沿用了它 —— 显式指定 `DSH_HOME=<检出>/.dsh-home` 或先 `unset DSH_HOME`。 |
+| 日志为空或滞后 | 网关 stdout 经管道时按块缓冲,属正常;账号与会话数据是独立的原子写,不受影响。 |
 
 ## 开发
 
