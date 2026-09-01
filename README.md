@@ -80,7 +80,40 @@ pnpm dsh plugin --profile gateway add ~/git/dhx-gateway
 dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<token>
 ```
 
-用浏览器打开该链接设置管理员用户名(小写字母/数字/短横线,≤32 字符)与密码(≥8 位)即完成初始化。此后管理员在 `/gw-admin` 为同事签发邀请。前台运行可直接 `pnpm dsh --profile gateway`;后台守护运行见下文[启停与日志](#启停与日志)。
+用浏览器打开该链接设置管理员用户名(小写字母/数字/短横线,≤32 字符)与密码(≥8 位)即完成初始化。此后管理员在 `/gw-admin` 为同事签发邀请。前台运行可直接 `pnpm dsh --profile gateway`;后台守护运行见下文[启停与日志](#启停与日志);各脚本的完整用途说明见[脚本一览](#脚本一览)。
+
+## 脚本一览
+
+`scripts/` 下全部脚本均为 POSIX sh,可在任意目录执行(内部按脚本自身位置定位项目根):
+
+| 脚本 | 用途 | 典型用法 |
+| --- | --- | --- |
+| `build.sh` | 编译 `src/` → `lib/`(tsc)。首次部署、每次改码后执行 | `./scripts/build.sh` |
+| `test.sh` | 运行完整测试套件(vitest,95 个用例);参数直通 vitest | `./scripts/test.sh`、过滤:`./scripts/test.sh -t store` |
+| `start.sh` | 后台守护启动网关;写 PID 文件与日志;重复执行安全(已运行则原样退出) | `./scripts/start.sh` |
+| `stop.sh` | 停止网关:SIGTERM 优雅退出,最多等 5 秒后 SIGKILL;自动清理陈旧 PID | `./scripts/stop.sh` |
+| `setup-deps.sh` | 把 `link:` 依赖绑定到指定检出并安装 `node_modules`(首次部署或检出换位后执行一次) | `DSH_CHECKOUT=~/git/deepseek-harness ./scripts/setup-deps.sh` |
+| `dsh-checkout.sh` | 内部辅助:定位并打印检出根,供其余脚本共用;一般不直接调用 | — |
+
+### 公共行为
+
+- **检出定位**(所有脚本共用):依次探测 `DSH_CHECKOUT` 环境变量 → 项目父目录(项目在检出内的布局) → 兄弟目录 `../deepseek-harness`(标准布局);全部失败则报错并要求显式指定 `DSH_CHECKOUT`。
+- **工具链优先级**(`build.sh`/`test.sh`):优先项目自身 `node_modules/.bin/` 的 tsc/vitest;未安装时回退到检出内的同名工具。
+
+### 环境变量
+
+| 变量 | 作用于 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `DSH_CHECKOUT` | 全部 | 自动定位(见上) | deepseek-harness 检出根 |
+| `DSH_HOME_DEPLOY` | `start.sh` / `stop.sh` | `<DSH_CHECKOUT>/.dsh-home` | 网关数据主目录(变量名避开 harness 自身的 `DSH_HOME`) |
+| `DSH_PROFILE` | `start.sh` | `gateway` | 要启动的 profile 名 |
+
+### 启动方式与产物
+
+- `start.sh` 的启动方式:存在 `<DSH_CHECKOUT>/apps/cli/src/bin.ts` 时用 `node --import tsx/esm` 源启动;否则若 `dsh` 在 PATH 上则用 `dsh --profile <name>`;两者皆无时报错退出。
+- 日志追加到 `<DSH_HOME>/gateway.log`;PID 写入 `<DSH_HOME>/gateway.pid`。
+- SIGTERM 会触发网关的完整回收:停止所有用户上游进程、落盘状态后再退出。
+- `setup-deps.sh` 把全部 link 目标按指定检出的**相对路径**改写(`package.json` 保持可提交),并校验每个目标确为检出内的包,然后 `pnpm install --prod`。
 
 ## 配置参考
 
@@ -144,29 +177,17 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 
 ### 启停与日志
 
-项目自带服务脚本(后台守护运行、PID 文件、日志追加):
-
 ```sh
-scripts/start.sh   # 启动;已在运行则提示后原样退出
-scripts/stop.sh    # 停止:SIGTERM 优雅退出(等待最多 5 秒),超时 SIGKILL
+scripts/start.sh   # 后台守护启动;已在运行则提示后原样退出
+scripts/stop.sh    # SIGTERM 优雅退出(最多 5 秒),超时 SIGKILL
 ```
 
-默认参数适配标准布局(项目与检出为兄弟目录),全部可用环境变量覆盖:
-
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `DSH_CHECKOUT` | 自动定位 | deepseek-harness 检出根;依次探测 `$DSH_CHECKOUT` → 父目录 → 兄弟目录 `../deepseek-harness` |
-| `DSH_HOME_DEPLOY` | `<DSH_CHECKOUT>/.dsh-home` | 网关数据主目录(变量名避开 harness 自身的 `DSH_HOME`) |
-| `DSH_PROFILE` | `gateway` | 要启动的 profile 名 |
+日志:`<DSH_HOME>/gateway.log`(追加);PID:`<DSH_HOME>/gateway.pid`。参数与环境变量见[脚本一览](#脚本一览)。
 
 ```sh
 # 自定义示例:独立数据目录 + 其他 profile
 DSH_HOME_DEPLOY=/srv/dhx DSH_PROFILE=gateway scripts/start.sh
 ```
-
-- 启动方式:存在 `<DSH_CHECKOUT>/apps/cli/src/bin.ts` 时用 tsx 源启动;否则若 `dsh` 在 PATH 上则用 `dsh --profile <name>`;两者皆无时报错退出。
-- 日志追加到 `<DSH_HOME>/gateway.log`,PID 写入 `<DSH_HOME>/gateway.pid`;`stop.sh` 按 PID 停止,含陈旧 PID 清理。
-- SIGTERM 会触发网关的完整回收:停止所有用户上游进程、落盘状态后再退出。
 
 ### 备份与迁移
 
@@ -176,8 +197,10 @@ DSH_HOME_DEPLOY=/srv/dhx DSH_PROFILE=gateway scripts/start.sh
 ### 升级插件
 
 ```sh
-./scripts/build.sh           # 重新构建 lib/
-# 重启网关进程(用户上游会在下次访问时自动重拉)
+git pull                      # 或同步代码后
+./scripts/build.sh            # 重新构建 lib/
+scripts/stop.sh && scripts/start.sh
+# 用户上游会在下次访问时自动重拉
 ```
 
 ### 重置账号
@@ -255,14 +278,8 @@ dhx-gateway/
 └── package.json       # 依赖以 link: 指向检出内的包(见下)
 ```
 
-- **构建/测试**:`./scripts/build.sh` 与 `./scripts/test.sh`(95/95)。优先用项目自身 `node_modules` 的 tsc/vitest;未安装时回退到检出工具链。
-- **依赖形态**:运行时依赖(4 个)与构建/测试期类型依赖(3 个)都以 `link:` 指向 `deepseek-harness` 检出内的 `vendor/`、`packages/`,目标写成**相对路径**(`link:../deepseek-harness/...`),package.json 可直接提交。标准布局(兄弟目录)下 `./scripts/build.sh` 即可构建;其他布局运行一次:
-
-  ```sh
-  DSH_CHECKOUT=/path/to/deepseek-harness ./scripts/setup-deps.sh
-  ```
-
-  它会把全部 link 目标按新检出的相对路径改写并安装 `node_modules`(会校验目标确为检出内的包)。
+- **构建/测试**:`./scripts/build.sh` 与 `./scripts/test.sh`(95/95),细节见[脚本一览](#脚本一览)。
+- **依赖形态**:运行时依赖(4 个)与构建/测试期类型依赖(3 个)都以 `link:` 指向 `deepseek-harness` 检出内的 `vendor/`、`packages/`,目标写成**相对路径**(`link:../deepseek-harness/...`),package.json 可直接提交。标准布局(兄弟目录)下克隆后 `pnpm install` + `./scripts/build.sh` 即可;检出不在 `../deepseek-harness` 时运行一次 `DSH_CHECKOUT=<检出路径> ./scripts/setup-deps.sh` 重新绑定。
 - **与 monorepo 包的关系**:`deepseek-harness/packages/host/multi-user-gateway` 是受仓库门禁(100% 覆盖率、双语 README、config-catalog 等)约束的实现源头,npm 名 `@deepseek-ai/dsh-host-multi-user-gateway`;本项目 **DHX Gateway**(npm 名 `dhx-gateway`)是从它派生的独立部署版,源码与 monorepo 包同源(仅命名与依赖形态不同),代码演进以 monorepo 包吃门禁后同步过来为准。
 
 ## 许可证
