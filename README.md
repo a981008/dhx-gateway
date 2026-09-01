@@ -14,7 +14,7 @@
 
 - **内置账号**:用户名 + 密码(scrypt 加盐哈希持久化),不依赖任何外部身份系统。
 - **邀请制开号**:管理员在 `/gw-admin` 签发一次性邀请链接;首次启动存在引导邀请用于认领管理员。
-- **签名会话**:`dshgw_session` HttpOnly Cookie,HMAC-SHA256 签名,默认 30 天有效。
+- **签名会话**:`dhxgw_session` HttpOnly Cookie,HMAC-SHA256 签名,默认 30 天有效。
 - **每用户完全隔离**:每个账号拥有独立的 `DSH_HOME`(配置、会话、凭据)与默认工作区;上游进程只绑定回环地址,外界无法绕过网关直连。
 - **自带密钥(BYOK)**:网关不持有任何用户的 `DEEPSEEK_API_KEY`——它不会下发给子进程,每个用户在自己 GUI 的凭据设置里配置。
 - **流式代理**:支持 SSE 流式响应;Host 重写 + Origin/Referer 剥离,满足上游的信任栅栏,无需在上游配置 `trustedHosts`。
@@ -24,26 +24,26 @@
 ## 环境要求
 
 - Node.js `^22.19 || >=24`,pnpm ≥ 10。
-- 一个可运行的 DeepSeek Harness 检出(依赖其 `vendor/`、`packages/` 构建产物;见"开发"一节)。
+- 一个已构建的 DeepSeek Harness 检出,与本项目互为兄弟目录(推荐 `~/git/deepseek-harness` 与 `~/git/dhx-gateway`;其他位置用 `DSH_CHECKOUT` 指定,见"开发"一节)。
 - 多用户场景建议 2GB 以上空闲内存(每个活跃用户一个完整 `dsh web` 进程)。
 
 ## 快速开始
 
-以下步骤假设:项目位于 `deepseek-harness` 检出根旁(当前布局),`dsh` 从检出以源码方式运行。
+以下步骤假设:项目与 `deepseek-harness` 检出为兄弟目录(即 `~/git/dhx-gateway` 与 `~/git/deepseek-harness`),`dsh` 从检出以源码方式运行。
 
 **1. 构建**
 
 ```sh
-cd dhx-gateway
-./scripts/build.sh        # 产出 lib/(构建工具来自检出根 node_modules)
+cd ~/git/dhx-gateway
+./scripts/build.sh        # 产出 lib/(优先用项目自身工具链,未安装时回退检出)
 ```
 
 **2. 装入 profile**(创建 `gateway` profile 并把本项目装为依赖)
 
 ```sh
-cd <deepseek-harness 检出根>
+cd ~/git/deepseek-harness
 export DSH_HOME="$PWD/.dsh-home"     # 部署主目录:账号、每用户数据、profile 都在这里
-pnpm dsh plugin --profile gateway add "$PWD/dhx-gateway"
+pnpm dsh plugin --profile gateway add ~/git/dhx-gateway
 ```
 
 > 若 pnpm 因全局 store 所在分区只读而报 `ERR_SQLITE_ERROR`:在 `<DSH_HOME>/profiles/gateway/.npmrc` 写入
@@ -71,7 +71,7 @@ pnpm dsh plugin --profile gateway add "$PWD/dhx-gateway"
 **4. 启动并认领管理员**
 
 ```sh
-pnpm dsh --profile gateway
+~/git/dhx-gateway/scripts/start.sh    # 前台运行则用: cd ~/git/deepseek-harness && pnpm dsh --profile gateway
 ```
 
 首次启动(且账号库为空)会打印一次性引导邀请,例如:
@@ -151,11 +151,11 @@ scripts/start.sh   # 启动;已在运行则提示后原样退出
 scripts/stop.sh    # 停止:SIGTERM 优雅退出(等待最多 5 秒),超时 SIGKILL
 ```
 
-默认参数适配"项目位于检出内"的布局,全部可用环境变量覆盖:
+默认参数适配标准布局(项目与检出为兄弟目录),全部可用环境变量覆盖:
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `DSH_CHECKOUT` | 从脚本位置推断 | deepseek-harness 检出根;项目迁出检出后必须显式设置 |
+| `DSH_CHECKOUT` | 自动定位 | deepseek-harness 检出根;依次探测 `$DSH_CHECKOUT` → 父目录 → 兄弟目录 `../deepseek-harness` |
 | `DSH_HOME_DEPLOY` | `<DSH_CHECKOUT>/.dsh-home` | 网关数据主目录(变量名避开 harness 自身的 `DSH_HOME`) |
 | `DSH_PROFILE` | `gateway` | 要启动的 profile 名 |
 
@@ -250,20 +250,20 @@ dhx-gateway/
 │                      #   secret/session-cookie/store/supervisor/upstream-jar)
 ├── tests/             # 13 个测试文件 + fixtures/fake-dsh-web.mjs(95 个用例)
 ├── examples/          # 局域网 / 回环两种组合 patch 示例
-├── scripts/           # build.sh / test.sh / setup-deps.sh / start.sh / stop.sh
+├── scripts/           # build.sh / test.sh / setup-deps.sh / start.sh / stop.sh / dsh-checkout.sh
 ├── lib/               # 构建产物(git 忽略)
 └── package.json       # 依赖以 link: 指向检出内的包(见下)
 ```
 
-- **构建**:`./scripts/build.sh`(tsc;工具链取自检出根)。**测试**:`./scripts/test.sh`(vitest,95/95)。
-- **依赖形态**:运行时依赖(4 个)与构建/测试期类型依赖(2 个)都以 `link:` 指向 `deepseek-harness` 检出内的 `vendor/`、`packages/`。项目位于检出内时无需网络即可构建;若把项目**迁移到检出外**,运行:
+- **构建/测试**:`./scripts/build.sh` 与 `./scripts/test.sh`(95/95)。优先用项目自身 `node_modules` 的 tsc/vitest;未安装时回退到检出工具链。
+- **依赖形态**:运行时依赖(4 个)与构建/测试期类型依赖(3 个)都以 `link:` 指向 `deepseek-harness` 检出内的 `vendor/`、`packages/`,目标写成**相对路径**(`link:../deepseek-harness/...`),package.json 可直接提交。标准布局(兄弟目录)下 `./scripts/build.sh` 即可构建;其他布局运行一次:
 
   ```sh
   DSH_CHECKOUT=/path/to/deepseek-harness ./scripts/setup-deps.sh
   ```
 
-  它会把全部 link 目标改写为新检出路径并安装 `node_modules`。
-- **与 monorepo 包的关系**:`deepseek-harness/packages/host/multi-user-gateway` 是受仓库门禁(100% 覆盖率、双语 README、config-catalog 等)约束的实现源头,npm 名 `@deepseek-ai/dsh-host-multi-user-gateway`;本目录是面向部署与文档的独立项目 **DHX Gateway**,npm 名 `dhx-gateway`,可直接被 profile 装入。代码演进请先落 monorepo(吃门禁),再同步到本目录重新构建;两侧源码目前同源,仅命名不同。
+  它会把全部 link 目标按新检出的相对路径改写并安装 `node_modules`(会校验目标确为检出内的包)。
+- **与 monorepo 包的关系**:`deepseek-harness/packages/host/multi-user-gateway` 是受仓库门禁(100% 覆盖率、双语 README、config-catalog 等)约束的实现源头,npm 名 `@deepseek-ai/dsh-host-multi-user-gateway`;本项目 **DHX Gateway**(npm 名 `dhx-gateway`)是从它派生的独立部署版,源码与 monorepo 包同源(仅命名与依赖形态不同),代码演进以 monorepo 包吃门禁后同步过来为准。
 
 ## 许可证
 

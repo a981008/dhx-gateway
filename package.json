@@ -25,16 +25,16 @@
     "lint": "oxlint src tests"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "link:../vendor/schemastery",
-    "@deepseek-ai/dsh-atomic-write": "link:../packages/util/atomic-write",
-    "@deepseek-ai/dsh-home-paths": "link:../packages/util/home-paths",
-    "@deepseek-ai/dsh-invariants": "link:../packages/runtime-diagnostics/invariants",
-    "@deepseek-ai/cordis": "link:../vendor/cordis",
-    "@deepseek-ai/dsh-host-webserver": "link:../packages/host/webserver",
-    "@deepseek-ai/dsh-app-boot": "link:../packages/boot/app-boot"
+    "@deepseek-ai/cordis": "link:../deepseek-harness/vendor/cordis",
+    "@deepseek-ai/dsh-app-boot": "link:../deepseek-harness/packages/boot/app-boot",
+    "@deepseek-ai/dsh-atomic-write": "link:../deepseek-harness/packages/util/atomic-write",
+    "@deepseek-ai/dsh-home-paths": "link:../deepseek-harness/packages/util/home-paths",
+    "@deepseek-ai/dsh-host-webserver": "link:../deepseek-harness/packages/host/webserver",
+    "@deepseek-ai/dsh-invariants": "link:../deepseek-harness/packages/runtime-diagnostics/invariants",
+    "@deepseek-ai/schemastery": "link:../deepseek-harness/vendor/schemastery"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^22.20.1",
     "typescript": "^5.7",
     "vitest": "^3"
   },

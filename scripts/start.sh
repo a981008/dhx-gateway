@@ -8,7 +8,7 @@
 # 日志: <DSH_HOME>/gateway.log   PID: <DSH_HOME>/gateway.pid
 set -e
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DSH_CHECKOUT=${DSH_CHECKOUT:-$(cd "$PROJECT_ROOT/.." && pwd)}
+DSH_CHECKOUT=$(cd "$PROJECT_ROOT" && ./scripts/dsh-checkout.sh)
 DSH_HOME=${DSH_HOME_DEPLOY:-"$DSH_CHECKOUT/.dsh-home"}
 DSH_PROFILE=${DSH_PROFILE:-gateway}
 PID_FILE="$DSH_HOME/gateway.pid"

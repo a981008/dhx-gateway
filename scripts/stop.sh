@@ -3,7 +3,7 @@
 # 用法: scripts/stop.sh
 set -e
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-DSH_CHECKOUT=${DSH_CHECKOUT:-$(cd "$PROJECT_ROOT/.." && pwd)}
+DSH_CHECKOUT=$(cd "$PROJECT_ROOT" && ./scripts/dsh-checkout.sh)
 DSH_HOME=${DSH_HOME_DEPLOY:-"$DSH_CHECKOUT/.dsh-home"}
 PID_FILE="$DSH_HOME/gateway.pid"
 

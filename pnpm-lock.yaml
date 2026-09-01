@@ -9,29 +9,29 @@ importers:
   .:
     dependencies:
       '@deepseek-ai/cordis':
-        specifier: link:../vendor/cordis
-        version: link:../vendor/cordis
+        specifier: link:../deepseek-harness/vendor/cordis
+        version: link:../deepseek-harness/vendor/cordis
       '@deepseek-ai/dsh-app-boot':
-        specifier: link:../packages/boot/app-boot
-        version: link:../packages/boot/app-boot
+        specifier: link:../deepseek-harness/packages/boot/app-boot
+        version: link:../deepseek-harness/packages/boot/app-boot
       '@deepseek-ai/dsh-atomic-write':
-        specifier: link:../packages/util/atomic-write
-        version: link:../packages/util/atomic-write
+        specifier: link:../deepseek-harness/packages/util/atomic-write
+        version: link:../deepseek-harness/packages/util/atomic-write
       '@deepseek-ai/dsh-home-paths':
-        specifier: link:../packages/util/home-paths
-        version: link:../packages/util/home-paths
+        specifier: link:../deepseek-harness/packages/util/home-paths
+        version: link:../deepseek-harness/packages/util/home-paths
       '@deepseek-ai/dsh-host-webserver':
-        specifier: link:../packages/host/webserver
-        version: link:../packages/host/webserver
+        specifier: link:../deepseek-harness/packages/host/webserver
+        version: link:../deepseek-harness/packages/host/webserver
       '@deepseek-ai/dsh-invariants':
-        specifier: link:../packages/runtime-diagnostics/invariants
-        version: link:../packages/runtime-diagnostics/invariants
+        specifier: link:../deepseek-harness/packages/runtime-diagnostics/invariants
+        version: link:../deepseek-harness/packages/runtime-diagnostics/invariants
       '@deepseek-ai/schemastery':
-        specifier: link:../vendor/schemastery
-        version: link:../vendor/schemastery
+        specifier: link:../deepseek-harness/vendor/schemastery
+        version: link:../deepseek-harness/vendor/schemastery
     devDependencies:
       '@types/node':
-        specifier: ^22
+        specifier: ^22.20.1
         version: 22.20.1
       typescript:
         specifier: ^5.7
