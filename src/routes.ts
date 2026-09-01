@@ -11,7 +11,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { ResolvedConfig } from './config.ts'
-import { adminPage, invitePage, loginPage, messagePage } from './pages.ts'
+import { adminPage, invitePage, loginPage, logoutPage, messagePage } from './pages.ts'
 import { proxyRequest } from './proxy.ts'
 import {
   clearSessionCookieHeader,
@@ -24,9 +24,17 @@ import {
 import { AccountStore, StoreError } from './store.ts'
 import type { InstanceSupervisor } from './supervisor.ts'
 import { mintUpstreamSession, UpstreamCookieJar } from './upstream-jar.ts'
+import { proxyUpgrade, createUpgradeAgent } from './upgrade.ts'
 
 /** Maximum accepted form body; gateway forms carry only account fields. */
 const MAX_FORM_BYTES = 32_768
+
+/**
+ * The exact path the dsh web client streams its mux WebSocket on. The
+ * webserver dispatches upgrades by exact pathname, so the fallback seat must
+ * claim this path explicitly and splice it to the user's upstream instance.
+ */
+export const UPSTREAM_MUX_PATH = '/api/remote.mux'
 
 /** Services and state the route handlers share. */
 export interface GatewayDeps {
@@ -57,6 +65,9 @@ export interface GatewayDeps {
 export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
   const { ctx, resolved, store, secret, supervisor, jar, agent, log } = deps
   const webServer = ctx.webServer
+  // Upgraded sockets must never enter the shared keep-alive pool; upgrade
+  // requests get their own connection-per-handshake agent, destroyed on disposal.
+  const upgradeAgent = createUpgradeAgent()
 
   const issueSession = (res: ServerResponse, user: string): void => {
     const session = issueGatewaySession(secret, user, resolved.sessionMaxAgeDays)
@@ -158,8 +169,19 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
   }
 
   const logoutHandler = (req: IncomingMessage, res: ServerResponse): void => {
+    if (req.method === 'GET') {
+      // The confirmation page is the members' logout entry point; without a
+      // session there is nothing to sign out of, so go straight to the form.
+      if (authenticatedUser(req) === undefined) {
+        res.writeHead(303, { location: '/login' })
+        res.end()
+        return
+      }
+      respondHtml(res, 200, logoutPage())
+      return
+    }
     if (req.method !== 'POST') {
-      res.writeHead(405, { allow: 'POST' })
+      res.writeHead(405, { allow: 'GET, POST' })
       res.end()
       return
     }
@@ -342,11 +364,73 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
     }
   }
 
+  /**
+   * WebSocket upgrade handler for the upstream's stream mux path. It mirrors
+   * the fallback seat's contract at the socket level: authenticate, ensure
+   * the instance, mint the upstream cookie server-side, splice the upgraded
+   * sockets, and retry the handshake exactly once when the upstream expires
+   * the jarred cookie (an upgrade carries no body, so the retry never
+   * replays bytes the browser sent).
+   */
+  const upgradeHandler = async (req: IncomingMessage, socket: import('node:stream').Duplex, head: Buffer): Promise<void> => {
+    const session = authenticatedUser(req)
+    if (session === undefined) {
+      socket.destroy()
+      return
+    }
+    let port: number
+    let token: string
+    try {
+      const endpoint = await supervisor.ensureEndpoint(session.user)
+      port = endpoint.port
+      token = endpoint.token
+    } catch (error) {
+      log(`upgrade start failed for ${session.user}: ${(error as Error).message}`)
+      socket.destroy()
+      return
+    }
+    const acquire = async (): Promise<string> => {
+      const jarred = jar.get(session.sid, port)
+      if (jarred !== undefined) return jarred
+      const minted = await mintUpstreamSession({ port, token })
+      jar.set(session.sid, minted, port)
+      return minted
+    }
+    let cookie: string
+    try {
+      cookie = await acquire()
+    } catch {
+      socket.destroy()
+      return
+    }
+    const status = await proxyUpgrade(req, socket, head, {
+      port,
+      cookie,
+      agent: upgradeAgent,
+      onActivity: () => supervisor.touch(session.user),
+    })
+    if (status === 401) {
+      jar.clear(session.sid)
+      let minted: string
+      try {
+        minted = await mintUpstreamSession({ port, token })
+      } catch {
+        if (!socket.destroyed) socket.destroy()
+        return
+      }
+      jar.set(session.sid, minted, port)
+      await proxyUpgrade(req, socket, head, { port, cookie: minted, agent: upgradeAgent, onActivity: () => supervisor.touch(session.user) })
+    }
+    supervisor.touch(session.user)
+  }
+
   return [
     webServer.register({ kind: 'exact', path: '/login', handler: loginHandler }),
     webServer.register({ kind: 'exact', path: '/logout', handler: logoutHandler }),
     webServer.register({ kind: 'prefix', path: '/invite', handler: inviteHandler }),
     webServer.register({ kind: 'prefix', path: '/gw-admin', handler: adminHandler }),
+    webServer.registerUpgrade({ path: UPSTREAM_MUX_PATH, handler: upgradeHandler }),
     webServer.registerFallback(fallbackHandler),
+    () => { upgradeAgent.destroy() },
   ]
 }

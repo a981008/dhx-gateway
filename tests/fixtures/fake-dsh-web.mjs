@@ -7,8 +7,11 @@
 // 'silent' stays serving but never prints it, 'noisy' prints unrelated and
 // malformed lines before the ready line, 'stubborn' ignores SIGTERM so only
 // SIGKILL stops it, and 'expire' accepts each issued cookie exactly once on
-// /expire/ paths before answering 401 (the gateway must re-mint).
+// /expire/ paths before answering 401 (the gateway must re-mint). The mux
+// upgrade path accepts any minted cookie; POSTing /__mux_arm_401 arms a
+// one-shot 401 for the next upgrade so the retry branch is testable.
 
+import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -40,9 +43,16 @@ if (mode === 'stubborn') {
 
 let issuedCookies = 0
 const cookieUses = new Map()
+let muxRejectNext = false
 
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://gateway-fixture.invalid')
+  if (url.pathname === '/__mux_arm_401') {
+    muxRejectNext = true
+    res.writeHead(200, { 'content-type': 'text/plain' })
+    res.end('fixture: next mux upgrade will answer 401 once')
+    return
+  }
   if (url.pathname === '/' && url.searchParams.has('token')) {
     issuedCookies += 1
     const cookie = `dsh_fixture_s${String(issuedCookies)}=value-${String(issuedCookies)}; Path=/`
@@ -86,6 +96,42 @@ const server = createServer((req, res) => {
       pid: process.pid,
     }))
   })
+})
+
+// The gateway claims the upstream's stream-mux upgrade path and splices the
+// upgraded sockets to the browser. The fixture accepts the handshake on the
+// same path and echoes raw bytes back, so tests can assert a live
+// bidirectional stream without speaking real WebSocket framing.
+server.on('upgrade', (req, socket, head) => {
+  const url = new URL(req.url ?? '/', 'http://gateway-fixture.invalid')
+  if (url.pathname !== '/api/remote.mux') {
+    socket.destroy()
+    return
+  }
+  if (muxRejectNext) {
+    // Armed over HTTP by the retry test: reject this handshake exactly once
+    // so the gateway must re-mint the upstream cookie and retry the upgrade.
+    muxRejectNext = false
+    socket.write('HTTP/1.1 401 Unauthorized\r\nconnection: close\r\ncontent-type: text/plain\r\n\r\nfixture: mux session expired')
+    socket.end()
+    return
+  }
+  const key = req.headers['sec-websocket-key']
+  if (typeof key !== 'string' || req.headers.upgrade?.toLowerCase() !== 'websocket') {
+    socket.destroy()
+    return
+  }
+  // Real accept-key derivation: sha1(key + GUID), base64. The client asserts it.
+  const accept = createHash('sha1').update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest('base64')
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nupgrade: websocket\r\nconnection: Upgrade\r\nsec-websocket-accept: ' + accept + '\r\n\r\n')
+  if (head.length > 0) socket.write(head)
+  const echo = (from, to) => {
+    from.on('data', chunk => to.write(chunk))
+    from.on('error', () => to.destroy())
+    from.on('close', () => to.destroy())
+  }
+  echo(socket, socket)
+  socket.on('error', () => socket.destroy())
 })
 
 server.listen(port, '127.0.0.1', () => {

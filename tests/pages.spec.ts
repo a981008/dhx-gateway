@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adminPage, escapeHtml, invitePage, loginPage, messagePage } from '../src/pages.ts'
+import { adminPage, escapeHtml, invitePage, loginPage, logoutPage, messagePage } from '../src/pages.ts'
 
 describe('gateway pages', () => {
   it('escapes HTML-sensitive text', () => {
@@ -55,6 +55,13 @@ describe('gateway pages', () => {
     expect(page).not.toContain('<img>')
     expect(page).toContain('&lt;img&gt;')
     expect(page).toContain('action="/gw-admin/users/enable"')
+  })
+
+  it('renders the sign-out confirmation with a POST form', () => {
+    const page = logoutPage()
+    expect(page).toContain('<h1>Sign out</h1>')
+    expect(page).toContain('<form method="post" action="/logout">')
+    expect(page).toContain('Sign out')
   })
 
   it('renders message pages with escaped bodies', () => {

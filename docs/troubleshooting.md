@@ -17,8 +17,10 @@
 | 端口被占(`EADDRINUSE`) | 换 `webserver.port`;或先停掉占用进程(`ss -tlnp \| grep 8080`)。 |
 | 局域网设备打不开 | 确认 `host: 0.0.0.0`;检查防火墙;WSL 见[部署形态](deployment.md);本机自测时留意环境变量代理(`http_proxy`)会截走请求,`curl --noproxy '*'` 验证。 |
 | 登录后白屏/超时 | 上游启动超过 `startTimeoutMs`;源码运行方式调到 `60000`,并看网关日志中该用户的启动输出。 |
+| 页面一直显示「连接中」 | dsh web 的流式 WebSocket(`/api/remote.mux` upgrade)没有打通:确认网关为修过该能力的版本(升级代理需 `webServer.registerUpgrade`,见 `src/upgrade.ts`);旧版本网关只代理普通 HTTP,upgrade 请求在 webserver 处查不到路由被直接断开,前端无限重连。 |
 | 请求偶发 502/504 | 上游崩溃进入冷却重启;查 `<usersRoot>/<user>/home` 内的日志与网关日志。 |
 | 启动不打印邀请 | 账号库已有用户(正常);或 `printBootstrapInvite: false`。 |
 | `dshCommand` 找不到可执行 | 该命令以**绝对路径**解析最稳(网关以用户工作区为 cwd 拉起子进程)。 |
+| 上游报 `Upstream unavailable … exited before its ready URL line`(源码运行) | 上游在打印 ready 行前就退出了,典型原因:`dshCommand` 直接指向 `tsx <检出>/apps/cli/src/bin.ts` —— tsx 按**子进程 cwd**(用户工作区)向上查找 tsconfig,找到的 tsconfig 没有 `@deepseek-ai/*` 的 paths 映射,`@deepseek-ai/cordis` 解析到检出内 vendor 的预构建产物,其导出与源码不同步(报 `does not provide an export named …`),进程启动即崩。处理:改用 `['<项目根>/scripts/dsh-web-upstream.sh', 'web']`(内部先 cd 到检出根再启动);该脚本的启动输出经插件日志器落盘,若 `gateway.log` 看不到,可直接手动以同样参数与 `DSH_HOME=<usersRoot>/<用户>/home` 复现看 stderr。 |
 | 启动即报 `profile "gateway" does not exist` | 外层环境已导出 `DSH_HOME`(例如 dsh 桌面端),启动脚本/服务沿用了它 —— 显式指定 `DSH_HOME=<检出>/.dsh-home` 或先 `unset DSH_HOME`。 |
 | 日志为空或滞后 | 网关 stdout 经管道时按块缓冲,属正常;账号与会话数据是独立的原子写,不受影响。 |

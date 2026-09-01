@@ -143,9 +143,9 @@ describe('multi-user gateway over a real composition', () => {
     const putLogin = await fetch(`${origin}/login`, { method: 'PUT', redirect: 'manual' })
     expect(putLogin.status).toBe(405)
     expect(putLogin.headers.get('allow')).toBe('GET, POST')
-    const getLogout = await fetch(`${origin}/logout`, { redirect: 'manual' })
-    expect(getLogout.status).toBe(405)
-    expect(getLogout.headers.get('allow')).toBe('POST')
+    const putLogout = await fetch(`${origin}/logout`, { method: 'PUT', redirect: 'manual' })
+    expect(putLogout.status).toBe(405)
+    expect(putLogout.headers.get('allow')).toBe('GET, POST')
     const putAdmin = await fetch(`${origin}/gw-admin`, { method: 'PUT', redirect: 'manual' })
     expect(putAdmin.status).toBe(405)
     // Missing form fields fall back to empty strings.
@@ -375,9 +375,23 @@ describe('multi-user gateway over a real composition', () => {
     expect(bounced.headers.get('location')).toBe('/login')
     await formPost(origin, '/gw-admin/users/enable', { name: 'member' }, admin)
 
+    // GET /logout is the members' sign-out entry point: a confirmation page
+    // while signed in, a redirect to the login form otherwise.
+    const confirmPage = await fetch(`${origin}/logout`, { headers: member.cookieHeader, redirect: 'manual' })
+    expect(confirmPage.status).toBe(200)
+    const page = await confirmPage.text()
+    expect(page).toContain('<form method="post" action="/logout">')
+    expect(page).toContain('Sign out')
+    const anonymous = await fetch(`${origin}/logout`, { redirect: 'manual' })
+    expect(anonymous.status).toBe(303)
+    expect(anonymous.headers.get('location')).toBe('/login')
+
     const out = await formPost(origin, '/logout', {}, member)
     expect(out.status).toBe(303)
     expect(out.headers.get('set-cookie')).toContain('Expires=Thu, 01 Jan 1970')
+    // The session is really gone: the confirmation page now redirects too.
+    const afterOut = await fetch(`${origin}/logout`, { headers: member.cookieHeader, redirect: 'manual' })
+    expect(afterOut.status).toBe(303)
   })
 
   it('stops every upstream instance when the composition disposes', async () => {

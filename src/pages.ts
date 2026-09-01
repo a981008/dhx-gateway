@@ -127,6 +127,21 @@ ${notice === undefined ? '' : `<p class="notice">${notice}</p>`}
 }
 
 /**
+ * Sign-out confirmation page. Reaching it by URL gives every member a logout
+ * entry point; the actual session clear stays a POST form, matching the
+ * no-scripts mutation rule.
+ * @returns the page HTML.
+ */
+export function logoutPage(): string {
+  return page('DSH Gateway — Sign out', `
+<h1>Sign out</h1>
+<p>This signs you out of the gateway in this browser. Your workspace instance keeps running and your data stays in place.</p>
+<form method="post" action="/logout">
+<button class="danger" type="submit">Sign out</button>
+</form>`)
+}
+
+/**
  * Simple message page for outcome diagnostics.
  * @param title - page title and heading.
  * @param body - message body text.

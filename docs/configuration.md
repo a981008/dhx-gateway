@@ -7,7 +7,7 @@
 
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `dshCommand` | `string[]` | 必填 | 启动每个用户上游的命令与参数;网关会自动追加 `--host 127.0.0.1 --port 0 --no-open`。正常安装用 `['dsh', 'web']`;从检出源码运行时用 `['<检出>/node_modules/.bin/tsx', '<检出>/apps/cli/src/bin.ts', 'web']`。 |
+| `dshCommand` | `string[]` | 必填 | 启动每个用户上游的命令与参数;网关会自动追加 `--host 127.0.0.1 --port 0 --no-open`,并以用户工作区为 cwd。正常安装用 `['dsh', 'web']`;从检出源码运行时**必须**用 `['<项目根>/scripts/dsh-web-upstream.sh', 'web']`(tsx 按 cwd 查找 tsconfig 应用 paths 映射,直接指到 `tsx bin.ts` 会在用户工作区 cwd 下解析到与源码不同步的 vendor 构建产物,上游启动即崩),见 [troubleshooting](troubleshooting.md)。 |
 | `stateRoot` | `string` | `<项目根>/data` | 网关持久状态根目录(账号库、签名密钥、每用户数据)。**默认在项目自己的 data/ 目录下,不在 dsh 安装内**;支持 `~` 与绝对路径覆盖。 |
 | `usersRoot` | `string` | `<stateRoot>/users` | 每用户数据根目录;`<usersRoot>/<用户名>/home` 是该用户上游的 `DSH_HOME`,`<usersRoot>/<用户名>/workspaces` 是其默认工作区。 |
 | `sessionMaxAgeDays` | `number` | `30` | 网关会话 Cookie 有效期(天),上限 3650。 |

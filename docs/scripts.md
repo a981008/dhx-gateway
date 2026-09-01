@@ -13,6 +13,7 @@
 | `stop.sh` | 停止网关:SIGTERM 优雅退出,最多等 5 秒后 SIGKILL;自动清理陈旧 PID | `./scripts/stop.sh` |
 | `setup-deps.sh` | 把 `link:` 依赖绑定到指定检出并安装 `node_modules`(首次部署或检出换位后执行一次) | `DSH_CHECKOUT=~/git/deepseek-harness ./scripts/setup-deps.sh` |
 | `dsh-checkout.sh` | 内部辅助:定位并打印检出根,供其余脚本共用;一般不直接调用 | — |
+| `dsh-web-upstream.sh` | 启动一个用户上游 `dsh web`:先 cd 到检出根再按与 `start.sh` 相同的方式拉起,保证源码运行时模块解析不依赖子进程 cwd;供 `dshCommand` 引用 | `dshCommand: ['<项目根>/scripts/dsh-web-upstream.sh', 'web']` |
 
 ## 公共行为
 

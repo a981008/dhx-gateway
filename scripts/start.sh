@@ -13,6 +13,12 @@ set -e
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DSH_CHECKOUT=$(cd "$PROJECT_ROOT" && ./scripts/dsh-checkout.sh)
 DSH_DATA=${DSH_DATA:-"$PROJECT_ROOT/data"}
+# 防线:外层环境若已导出 DSH_HOME(例如 dsh 桌面端指向 ~/.dsh),而该目录里
+# 并没有本项目要用的 gateway profile,启动必然失败(profile does not exist)。
+# 此时忽略外层值、落回检出内主目录,除非那里确实存在对应 profile。
+if [ -n "${DSH_HOME:-}" ] && [ ! -d "$DSH_HOME/profiles/$DSH_PROFILE" ]; then
+  DSH_HOME=""
+fi
 DSH_HOME=${DSH_HOME:-"$DSH_CHECKOUT/.dsh-home"}
 DSH_PROFILE=${DSH_PROFILE:-gateway}
 PID_FILE="$DSH_DATA/gateway.pid"
