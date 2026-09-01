@@ -7,8 +7,9 @@
 
 | 脚本 | 用途 | 典型用法 |
 | --- | --- | --- |
+| `deploy.sh` | **一键部署(新机器/远程)**:装依赖 → 构建 → 创建 profile → 写组合 patch → 启动,等价快速开始的第 2–4 步;幂等,已存在的 profile 与 `cordis.patch.yml` 不会被覆盖。参数:`--host 0.0.0.0\|127.0.0.1`、`--port N`、`--public-origin URL`、`--dsh-home DIR`、`--no-start` | `./scripts/deploy.sh`、`./scripts/deploy.sh --port 9000 --public-origin https://dsh.example.com --no-start` |
 | `build.sh` | 编译 `src/` → `lib/`(tsc)。首次部署、每次改码后执行 | `./scripts/build.sh` |
-| `test.sh` | 运行完整测试套件(vitest,95 个用例);参数直通 vitest | `./scripts/test.sh`、过滤:`./scripts/test.sh -t store` |
+| `test.sh` | 运行完整测试套件(vitest,105 个用例);参数直通 vitest | `./scripts/test.sh`、过滤:`./scripts/test.sh -t store` |
 | `start.sh` | 后台守护启动网关;写 PID 文件与日志;重复执行安全(已运行则原样退出) | `./scripts/start.sh` |
 | `stop.sh` | 停止网关:SIGTERM 优雅退出,最多等 5 秒后 SIGKILL;自动清理陈旧 PID | `./scripts/stop.sh` |
 | `setup-deps.sh` | 把 `link:` 依赖绑定到指定检出并安装 `node_modules`(首次部署或检出换位后执行一次) | `DSH_CHECKOUT=~/git/deepseek-harness ./scripts/setup-deps.sh` |
@@ -25,9 +26,9 @@
 | 变量 | 作用于 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `DSH_CHECKOUT` | 全部 | 自动定位(见上) | deepseek-harness 检出根 |
-| `DSH_DATA` | `start.sh` / `stop.sh` | `<项目根>/data` | 网关数据与运行档案目录(gateway.log / gateway.pid / 默认 stateRoot)。变量名避开 harness 自身的 `DSH_HOME` |
-| `DSH_HOME` | `start.sh` | `<DSH_CHECKOUT>/.dsh-home` | 传给网关进程的 dsh 主目录(profiles 所在,属 dsh 侧)。外层已导出的 `DSH_HOME`(如 dsh 桌面端)若不含对应 profile,启动脚本自动忽略并回退默认值;要刻意使用非默认主目录时才需显式设置 |
-| `DSH_PROFILE` | `start.sh` | `gateway` | 要启动的 profile 名 |
+| `DSH_DATA` | `start.sh` / `stop.sh` / `deploy.sh` | `<项目根>/data` | 网关数据与运行档案目录(gateway.log / gateway.pid / 默认 stateRoot)。变量名避开 harness 自身的 `DSH_HOME` |
+| `DSH_HOME` | `start.sh` / `deploy.sh` | `<DSH_CHECKOUT>/.dsh-home` | 传给网关进程的 dsh 主目录(profiles 所在,属 dsh 侧);`deploy.sh` 用它创建/定位 profile,与启动保持同源。外层已导出的 `DSH_HOME`(如 dsh 桌面端)若不含对应 profile,启动脚本自动忽略并回退默认值;要刻意使用非默认主目录时才需显式设置 |
+| `DSH_PROFILE` | `start.sh` / `deploy.sh` | `gateway` | 要启动/部署的 profile 名 |
 
 ## 启动方式与产物
 

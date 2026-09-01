@@ -35,6 +35,8 @@
 
 以下步骤假设:项目与 `deepseek-harness` 检出为兄弟目录(即 `~/git/dhx-gateway` 与 `~/git/deepseek-harness`),`dsh` 从检出以源码方式运行。
 
+> **新机器/远程部署**可跳过第 2–4 步,直接运行 `./scripts/deploy.sh` 一键完成(装依赖、构建、创建 profile、写 patch 并启动;幂等,已有配置不会被覆盖),见[脚本一览](docs/scripts.md)。
+
 **1. 构建**
 
 ```sh
@@ -97,7 +99,7 @@ dhx-gateway: pick the address your members actually use, or set publicOrigin to 
 | 文档 | 内容 |
 | --- | --- |
 | [docs/configuration.md](docs/configuration.md) | 插件全部配置字段与 webserver 组合要点 |
-| [docs/scripts.md](docs/scripts.md) | 7 个脚本的用途、公共行为、环境变量 |
+| [docs/scripts.md](docs/scripts.md) | 8 个脚本的用途、公共行为、环境变量 |
 | [docs/usage.md](docs/usage.md) | 账号与邀请、保留路径、代理行为 |
 | [docs/operations.md](docs/operations.md) | 数据布局、启停与日志、备份迁移、升级、重置 |
 | [docs/deployment.md](docs/deployment.md) | HTTPS 反代、systemd 常驻、WSL 注意 |
