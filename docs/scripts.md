@@ -1,0 +1,36 @@
+# 脚本一览
+
+> 覆盖:`scripts/` 全部脚本的用途、公共行为与环境变量。
+> 上游:[README](../README.md) · 相邻:[运维](operations.md)(数据布局与启停) · [配置参考](configuration.md)(插件配置字段)
+
+`scripts/` 下全部脚本均为 POSIX sh,可在任意目录执行(内部按脚本自身位置定位项目根):
+
+| 脚本 | 用途 | 典型用法 |
+| --- | --- | --- |
+| `build.sh` | 编译 `src/` → `lib/`(tsc)。首次部署、每次改码后执行 | `./scripts/build.sh` |
+| `test.sh` | 运行完整测试套件(vitest,95 个用例);参数直通 vitest | `./scripts/test.sh`、过滤:`./scripts/test.sh -t store` |
+| `start.sh` | 后台守护启动网关;写 PID 文件与日志;重复执行安全(已运行则原样退出) | `./scripts/start.sh` |
+| `stop.sh` | 停止网关:SIGTERM 优雅退出,最多等 5 秒后 SIGKILL;自动清理陈旧 PID | `./scripts/stop.sh` |
+| `setup-deps.sh` | 把 `link:` 依赖绑定到指定检出并安装 `node_modules`(首次部署或检出换位后执行一次) | `DSH_CHECKOUT=~/git/deepseek-harness ./scripts/setup-deps.sh` |
+| `dsh-checkout.sh` | 内部辅助:定位并打印检出根,供其余脚本共用;一般不直接调用 | — |
+
+## 公共行为
+
+- **检出定位**(所有脚本共用):依次探测 `DSH_CHECKOUT` 环境变量 → 项目父目录(项目在检出内的布局) → 兄弟目录 `../deepseek-harness`(标准布局);全部失败则报错并要求显式指定 `DSH_CHECKOUT`。
+- **工具链优先级**(`build.sh`/`test.sh`):优先项目自身 `node_modules/.bin/` 的 tsc/vitest;未安装时回退到检出内的同名工具。
+
+## 环境变量
+
+| 变量 | 作用于 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `DSH_CHECKOUT` | 全部 | 自动定位(见上) | deepseek-harness 检出根 |
+| `DSH_DATA` | `start.sh` / `stop.sh` | `<项目根>/data` | 网关数据与运行档案目录(gateway.log / gateway.pid / 默认 stateRoot)。变量名避开 harness 自身的 `DSH_HOME` |
+| `DSH_HOME` | `start.sh` | `<DSH_CHECKOUT>/.dsh-home` | 传给网关进程的 dsh 主目录(profiles 所在,属 dsh 侧)。外层环境若已导出 `DSH_HOME`,必须显式覆盖 |
+| `DSH_PROFILE` | `start.sh` | `gateway` | 要启动的 profile 名 |
+
+## 启动方式与产物
+
+- `start.sh` 的启动方式:存在 `<DSH_CHECKOUT>/apps/cli/src/bin.ts` 时用 `node --import tsx/esm` 源启动;否则若 `dsh` 在 PATH 上则用 `dsh --profile <name>`;两者皆无时报错退出。
+- 日志追加到 `<DSH_DATA>/gateway.log`;PID 写入 `<DSH_DATA>/gateway.pid`;`stop.sh` 只读同一 `DSH_DATA`。
+- SIGTERM 会触发网关的完整回收:停止所有用户上游进程、落盘状态后再退出。
+- `setup-deps.sh` 把全部 link 目标按指定检出的**相对路径**改写(`package.json` 保持可提交),并校验每个目标确为检出内的包,然后 `pnpm install --prod`。
