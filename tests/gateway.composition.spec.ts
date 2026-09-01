@@ -1,4 +1,5 @@
 import { createHash, createHmac } from 'node:crypto'
+import http from 'node:http'
 import { chmodSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -354,6 +355,31 @@ describe('multi-user gateway over a real composition', () => {
     // The member's own upstream instance starts with its own DSH_HOME.
     const proxied = await fetch(`${origin}/member/probe`, { headers: member.cookieHeader })
     expect((await proxied.json() as EchoBody).dshHome).toBe(join(usersRoot, 'member', 'home'))
+  })
+
+  it('derives the admin invite link from the request Host', async () => {
+    // fetch forbids overriding Host, so speak raw http for this assertion.
+    const link = await new Promise<string>((resolveLink, rejectLink) => {
+      const request = http.request(
+        { host: '127.0.0.1', port: Number(ctx?.webServer.port), method: 'POST', path: '/gw-admin/invite', headers: { host: 'gw.example.test', cookie: admin.cookieHeader.cookie, 'content-type': 'application/x-www-form-urlencoded' } },
+        (response) => {
+          response.setEncoding('utf8')
+          let body = ''
+          response.on('data', (chunk: string) => { body += chunk })
+          response.on('end', () => { resolveLink(body) })
+        },
+      )
+      request.on('error', rejectLink)
+      request.end('')
+    })
+    const match = link.match(/新邀请链接\(仅显示一次\): (\S+?)<\//)
+    expect(match).not.toBeNull()
+    expect(match?.[1]?.startsWith('http://gw.example.test/invite/')).toBe(true)
+
+    // Clean up the invite created for this assertion.
+    const token = match?.[1]?.split('/invite/')[1] as string
+    const id = createHash('sha256').update(token, 'utf8').digest('hex').slice(0, 12)
+    await formPost(origin, '/gw-admin/invite/revoke', { id }, admin)
   })
 
   it('revokes unused invites from the dashboard', async () => {

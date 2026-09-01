@@ -1,5 +1,5 @@
 # 仅本机回环部署:局域网不可见,远程用户经 SSH 隧道访问。
-# 不设 publicOrigin——邀请链接按监听端口打印为 http://127.0.0.1:<port>/...
+# 不设 publicOrigin——邀请链接自动推导(回环部署即打印 http://127.0.0.1:<port>/...)
 - insert:
     - id: webserver
       name: '@deepseek-ai/dsh-host-webserver'

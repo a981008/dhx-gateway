@@ -5,7 +5,7 @@
 
 ## HTTPS 反向代理(推荐对外)
 
-明文 HTTP 只适合可信内网。对外服务请加 TLS 终结层,并开启 `secureCookies: true`、把 `publicOrigin` 设为对外 https origin。Caddy 示例:
+明文 HTTP 只适合可信内网。对外服务请加 TLS 终结层,并开启 `secureCookies: true`、把 `publicOrigin` 设为对外 https origin(反代会改写 Host,自动推导在这里必然失真,必须显式声明)。Caddy 示例:
 
 ```
 dsh.example.com {

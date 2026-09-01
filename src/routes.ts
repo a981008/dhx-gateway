@@ -25,6 +25,7 @@ import { AccountStore, StoreError } from './store.ts'
 import type { InstanceSupervisor } from './supervisor.ts'
 import { mintUpstreamSession, UpstreamCookieJar } from './upstream-jar.ts'
 import { proxyUpgrade, createUpgradeAgent } from './upgrade.ts'
+import { requestOrigin } from './origin.ts'
 
 /** Maximum accepted form body; gateway forms carry only account fields. */
 const MAX_FORM_BYTES = 32_768
@@ -118,7 +119,12 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
     return { sid: session.sid, user: session.user }
   }
 
-  const adminLinkOrigin = (): string => resolved.publicOrigin ?? `http://127.0.0.1:${String(webServer.port)}`
+  // The invite link the admin copies should match the address they are
+  // themselves using, so derive it from the request; publicOrigin (when set)
+  // overrides both this and the bootstrap print. Forwarded headers are
+  // deliberately not trusted here (see requestOrigin).
+  const adminLinkOrigin = (req: IncomingMessage): string =>
+    resolved.publicOrigin ?? requestOrigin(req, webServer.port)
 
   const renderAdmin = (res: ServerResponse, notice?: string): void => {
     respondHtml(res, 200, adminPage(
@@ -270,7 +276,7 @@ export function registerGatewayRoutes(deps: GatewayDeps): Array<() => void> {
           return
         }
         const token = await store.createInvite(ttlMinutes === undefined ? {} : { ttlMinutes })
-        renderAdmin(res, `新邀请链接(仅显示一次): ${adminLinkOrigin()}/invite/${token}`)
+        renderAdmin(res, `新邀请链接(仅显示一次): ${adminLinkOrigin(req)}/invite/${token}`)
         return
       }
       if (rawPath === '/gw-admin/invite/revoke') {

@@ -11,7 +11,10 @@
       name: 'dhx-gateway'
       config:
         # 启动每个用户上游的命令:正式安装用 ['dsh', 'web'];
-        # 从 deepseek-harness 检出以源码方式运行时用下面的 tsx 形式。
+        # 从 deepseek-harness 检出以源码方式运行时用 scripts/dsh-web-upstream.sh。
         dshCommand: ['dsh', 'web']
-        publicOrigin: 'http://192.168.10.19:8080'
+        # publicOrigin 仅在自动推导不可能正确时才需要(HTTPS 反代/域名/Docker/WSL 映射)。
+        # 直连形态(局域网 IP、回环)无需配置:管理台链接按请求 Host、
+        # 引导邀请按本机网卡枚举自动生成。
+        # publicOrigin: 'http://192.168.10.19:8080'
         startTimeoutMs: 60000

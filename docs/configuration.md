@@ -15,7 +15,7 @@
 | `startTimeoutMs` | `number` | `30000` | 等待一个上游实例打印 ready 行的毫秒数;源码方式运行建议 `60000`。 |
 | `secureCookies` | `boolean` | `false` | 会话 Cookie 是否加 `Secure` 标记;仅在 HTTPS 反向代理之后才开启。 |
 | `printBootstrapInvite` | `boolean` | `true` | 账号库为空时启动是否打印引导邀请。 |
-| `publicOrigin` | `string` | 未设时按监听端口打印回环 URL | 用于显示邀请链接的对外 origin,如 `https://dsh.example.com`。只影响展示,不影响鉴权。 |
+| `publicOrigin` | `string` | 未设时自动推导 | 邀请链接展示 origin 的**可选覆盖**;只影响展示,不影响鉴权。不设时:管理台邀请链接按当前请求的 Host 推导;启动引导邀请枚举本机全部非回环 IPv4 + 回环,逐行打印。仅当自动推导不可能正确时才需要设置(HTTPS 反向代理、域名、Docker/WSL 端口映射——即网关看不到真实对外地址的形态),此时它同时覆盖两个展示点。 |
 
 ## webserver 组合要点
 

@@ -16,6 +16,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import { Config, resolveConfig, type ResolvedConfig } from './config.ts'
 import { createUpstreamAgent } from './proxy.ts'
 import { loadOrCreateGatewaySecret } from './secret.ts'
+import { localInterfaceOrigins } from './origin.ts'
 import { registerGatewayRoutes } from './routes.ts'
 import { AccountStore } from './store.ts'
 import { InstanceSupervisor } from './supervisor.ts'
@@ -72,8 +73,18 @@ export function apply(ctx: Context, config: Config): void {
     void (async () => {
       if (store.countUsers() > 0) return
       const token = await store.createInvite({ bootstrap: true })
-      const origin = resolved.publicOrigin ?? `http://127.0.0.1:${String(ctx.webServer.port)}`
-      console.log(`dhx-gateway: bootstrap invite (single use): ${origin}/invite/${token}`)
+      const port = ctx.webServer.port
+      // Explicit origin wins; otherwise print one line per plausible address
+      // (best-first, loopback last) so the shareable link is always among them.
+      const origins = resolved.publicOrigin !== undefined
+        ? [resolved.publicOrigin]
+        : localInterfaceOrigins(port)
+      for (const origin of origins) {
+        console.log(`dhx-gateway: bootstrap invite (single use): ${origin}/invite/${token}`)
+      }
+      if (resolved.publicOrigin === undefined && origins.length > 1) {
+        console.log('dhx-gateway: pick the address your members actually use, or set publicOrigin to override')
+      }
     })().catch((error: unknown) => {
       ctx.logger.warn('dhx-gateway: could not print the bootstrap invite: %s', (error as Error).message)
     })
