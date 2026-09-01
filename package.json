@@ -1,0 +1,42 @@
+{
+  "name": "dhx-gateway",
+  "description": "DHX Gateway — DeepSeek Harness 多用户网关:邀请码账号、签名会话、每用户独立 dsh web 上游与流式代理。DHX (DeepSeek Harness eXchange) multi-user serving gateway for DeepSeek Harness.",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    }
+  },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
+    "lint": "oxlint src tests"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "link:../vendor/schemastery",
+    "@deepseek-ai/dsh-atomic-write": "link:../packages/util/atomic-write",
+    "@deepseek-ai/dsh-home-paths": "link:../packages/util/home-paths",
+    "@deepseek-ai/dsh-invariants": "link:../packages/runtime-diagnostics/invariants",
+    "@deepseek-ai/cordis": "link:../vendor/cordis",
+    "@deepseek-ai/dsh-host-webserver": "link:../packages/host/webserver",
+    "@deepseek-ai/dsh-app-boot": "link:../packages/boot/app-boot"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.7",
+    "vitest": "^3"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,17 @@
+# 局域网多用户部署:局域网内设备直接访问 http://<本机IP>:8080。
+# 明文 HTTP——请在可信内网使用;对外服务请加 TLS 反向代理(见 README 部署形态)。
+- insert:
+    - id: webserver
+      name: '@deepseek-ai/dsh-host-webserver'
+      config:
+        host: 0.0.0.0
+        port: 8080
+        compression: none
+    - id: multi-user-gateway
+      name: 'dhx-gateway'
+      config:
+        # 启动每个用户上游的命令:正式安装用 ['dsh', 'web'];
+        # 从 deepseek-harness 检出以源码方式运行时用下面的 tsx 形式。
+        dshCommand: ['dsh', 'web']
+        publicOrigin: 'http://192.168.10.19:8080'
+        startTimeoutMs: 60000
