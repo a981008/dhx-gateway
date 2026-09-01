@@ -19,8 +19,10 @@
 - **签名会话**:`dhxgw_session` HttpOnly Cookie,HMAC-SHA256 签名(无服务端会话表,重启不失效),默认 30 天有效。
 - **每用户完全隔离**:每个账号拥有独立的 `DSH_HOME`(配置、会话、凭据)与默认工作区;上游进程只绑定回环地址,外界无法绕过网关直连。
 - **自带密钥(BYOK)**:网关不持有任何用户的 `DEEPSEEK_API_KEY`——它不会下发给子进程,每个用户在自己 GUI 的凭据设置里配置。
-- **流式代理**:支持 SSE 流式响应;Host 重写 + Origin/Referer 剥离,满足上游的信任栅栏,无需在上游配置 `trustedHosts`。
+- **流式代理**:SSE 与 WebSocket 全透传(含 dsh web 的 `/api/remote.mux` 流式复用连接);Host 重写 + Origin/Referer 剥离,满足上游的信任栅栏,无需在上游配置 `trustedHosts`。
+- **全中文界面**:登录、邀请、管理台、退出等网关自有页面均为中文。
 - **按需启停**:首次登录拉起该用户的上游(ready 行协议探测就绪);可配置空闲自动停止以省内存。
+- **成员自助退出**:访问 `/logout` 一键清除网关会话,不影响工作区实例与数据。
 - **零侵入**:作为 cordis 插件运行,不修改 DeepSeek Harness 任何源码;组合通过 profile 的 patch 层声明。
 
 ## 环境要求
@@ -65,8 +67,11 @@ pnpm dsh plugin --profile gateway add ~/git/dhx-gateway
     - id: dhx-gateway
       name: 'dhx-gateway'
       config:
-        dshCommand: ['dsh', 'web']
-        publicOrigin: 'http://192.168.10.19:8080'   # 局域网部署才需要;用于打印邀请链接
+        # 从检出源码运行时必须用包装脚本(绝对路径;直接指 tsx 会在用户工作区
+        # cwd 下解析到过期的 vendor 产物,上游启动即崩);正式安装用 ['dsh', 'web']
+        dshCommand: ['/home/you/git/dhx-gateway/scripts/dsh-web-upstream.sh', 'web']
+        # 邀请链接展示地址自动推导(管理台按请求 Host、引导邀请按网卡枚举),
+        # 无需配置;仅 HTTPS 反代/域名/容器映射等网关看不到真实地址的形态才设 publicOrigin
         startTimeoutMs: 60000
 ```
 
@@ -76,20 +81,23 @@ pnpm dsh plugin --profile gateway add ~/git/dhx-gateway
 ~/git/dhx-gateway/scripts/start.sh    # 前台运行则用: cd ~/git/deepseek-harness && pnpm dsh --profile gateway
 ```
 
-首次启动(且账号库为空)会打印一次性引导邀请,例如:
+首次启动(且账号库为空)会打印一次性引导邀请 —— 按本机网卡逐行列出全部候选地址(默认路由网卡排最前,回环兜底;同一 token 对所有地址有效):
 
 ```
 dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<token>
+dhx-gateway: bootstrap invite (single use): http://172.17.0.1:8080/invite/<token>
+dhx-gateway: bootstrap invite (single use): http://127.0.0.1:8080/invite/<token>
+dhx-gateway: pick the address your members actually use, or set publicOrigin to override
 ```
 
-用浏览器打开该链接设置管理员用户名(小写字母/数字/短横线,≤32 字符)与密码(≥8 位)即完成初始化。此后管理员在 `/gw-admin` 为同事签发邀请。
+用浏览器打开**同事实际访问地址**对应的那条链接,设置管理员用户名(小写字母/数字/短横线,≤32 字符)与密码(≥8 位)即完成初始化。此后管理员在 `/gw-admin` 为同事签发邀请(链接按管理员当前访问地址自动生成)。
 
 ## 文档地图
 
 | 文档 | 内容 |
 | --- | --- |
 | [docs/configuration.md](docs/configuration.md) | 插件全部配置字段与 webserver 组合要点 |
-| [docs/scripts.md](docs/scripts.md) | 6 个脚本的用途、公共行为、环境变量 |
+| [docs/scripts.md](docs/scripts.md) | 7 个脚本的用途、公共行为、环境变量 |
 | [docs/usage.md](docs/usage.md) | 账号与邀请、保留路径、代理行为 |
 | [docs/operations.md](docs/operations.md) | 数据布局、启停与日志、备份迁移、升级、重置 |
 | [docs/deployment.md](docs/deployment.md) | HTTPS 反代、systemd 常驻、WSL 注意 |

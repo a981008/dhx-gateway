@@ -22,5 +22,5 @@
 | 启动不打印邀请 | 账号库已有用户(正常);或 `printBootstrapInvite: false`。 |
 | `dshCommand` 找不到可执行 | 该命令以**绝对路径**解析最稳(网关以用户工作区为 cwd 拉起子进程)。 |
 | 上游报 `Upstream unavailable … exited before its ready URL line`(源码运行) | 上游在打印 ready 行前就退出了,典型原因:`dshCommand` 直接指向 `tsx <检出>/apps/cli/src/bin.ts` —— tsx 按**子进程 cwd**(用户工作区)向上查找 tsconfig,找到的 tsconfig 没有 `@deepseek-ai/*` 的 paths 映射,`@deepseek-ai/cordis` 解析到检出内 vendor 的预构建产物,其导出与源码不同步(报 `does not provide an export named …`),进程启动即崩。处理:改用 `['<项目根>/scripts/dsh-web-upstream.sh', 'web']`(内部先 cd 到检出根再启动);该脚本的启动输出经插件日志器落盘,若 `gateway.log` 看不到,可直接手动以同样参数与 `DSH_HOME=<usersRoot>/<用户>/home` 复现看 stderr。 |
-| 启动即报 `profile "gateway" does not exist` | 外层环境已导出 `DSH_HOME`(例如 dsh 桌面端),启动脚本/服务沿用了它 —— 显式指定 `DSH_HOME=<检出>/.dsh-home` 或先 `unset DSH_HOME`。 |
+| 启动即报 `profile "gateway" does not exist` | 两种可能:①**新机器部署漏了装入步骤** —— profile 是 dsh 侧运行态(`DSH_HOME/profiles/gateway`,含装入的依赖),不在 git 里,克隆后必须先 `cd <检出> && export DSH_HOME=<检出>/.dsh-home && pnpm dsh plugin --profile gateway add <项目绝对路径>` 创建,并写好 `cordis.patch.yml`,再跑 `start.sh`;②外层环境已导出 `DSH_HOME`(例如 dsh 桌面端)且其中没有该 profile —— 启动脚本会自动回退到检出内主目录,但若你把 profile 建在了别处,请让创建与启动使用同一个 `DSH_HOME`。 |
 | 日志为空或滞后 | 网关 stdout 经管道时按块缓冲,属正常;账号与会话数据是独立的原子写,不受影响。 |

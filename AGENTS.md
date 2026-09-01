@@ -10,9 +10,9 @@ dsh(DeepSeek Harness)的多用户网关 cordis 插件:邀请码账号 + HMAC 签
 
 | 路径 | 内容 | 入库 |
 | --- | --- | --- |
-| `src/` | 12 个模块:config/index/invariant/pages/password/proxy/routes/secret/session-cookie/store/supervisor/upstream-jar | 是 |
-| `tests/` | 13 个 spec + `fixtures/fake-dsh-web.mjs`(95 个用例,vitest) | 是 |
-| `scripts/` | 6 个 POSIX sh:build / test / setup-deps / start / stop / dsh-checkout | 是 |
+| `src/` | 14 个模块:config/index/invariant/origin/pages/password/proxy/routes/secret/session-cookie/store/supervisor/upgrade/upstream-jar | 是 |
+| `tests/` | 15 个 spec + `fixtures/fake-dsh-web.mjs`(105 个用例,vitest) | 是 |
+| `scripts/` | 7 个 POSIX sh:build / test / setup-deps / start / stop / dsh-checkout / dsh-web-upstream | 是 |
 | `docs/` | 拆分文档(配置/脚本/使用/运维/部署/排查/开发) | 是 |
 | `examples/` | 局域网 / 回环两种组合 patch 示例 | 是 |
 | `lib/`、`node_modules/`、`data/` | 构建产物、依赖、运行数据 | **否(.gitignore)** |
@@ -20,7 +20,7 @@ dsh(DeepSeek Harness)的多用户网关 cordis 插件:邀请码账号 + HMAC 签
 ## 命令
 
 - 构建:`./scripts/build.sh`(改 `src/` 后必须;产出 `lib/`)
-- 测试:`./scripts/test.sh`(全量 95;过滤:`./scripts/test.sh -t <pattern>`)
+- 测试:`./scripts/test.sh`(全量 105;过滤:`./scripts/test.sh -t <pattern>`)
 - 启停:`./scripts/start.sh` / `./scripts/stop.sh`(写 `data/gateway.{log,pid}`)
 - 依赖重建(检出换位后):`DSH_CHECKOUT=<检出> ./scripts/setup-deps.sh`
 

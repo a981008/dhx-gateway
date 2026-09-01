@@ -26,7 +26,7 @@
 | --- | --- | --- | --- |
 | `DSH_CHECKOUT` | 全部 | 自动定位(见上) | deepseek-harness 检出根 |
 | `DSH_DATA` | `start.sh` / `stop.sh` | `<项目根>/data` | 网关数据与运行档案目录(gateway.log / gateway.pid / 默认 stateRoot)。变量名避开 harness 自身的 `DSH_HOME` |
-| `DSH_HOME` | `start.sh` | `<DSH_CHECKOUT>/.dsh-home` | 传给网关进程的 dsh 主目录(profiles 所在,属 dsh 侧)。外层环境若已导出 `DSH_HOME`,必须显式覆盖 |
+| `DSH_HOME` | `start.sh` | `<DSH_CHECKOUT>/.dsh-home` | 传给网关进程的 dsh 主目录(profiles 所在,属 dsh 侧)。外层已导出的 `DSH_HOME`(如 dsh 桌面端)若不含对应 profile,启动脚本自动忽略并回退默认值;要刻意使用非默认主目录时才需显式设置 |
 | `DSH_PROFILE` | `start.sh` | `gateway` | 要启动的 profile 名 |
 
 ## 启动方式与产物

@@ -7,12 +7,13 @@
 
 ```
 dhx-gateway/
-├── src/               # 插件源码(config/index/invariant/pages/password/proxy/routes/
-│                      #   secret/session-cookie/store/supervisor/upstream-jar)
-├── tests/             # 13 个测试文件 + fixtures/fake-dsh-web.mjs(95 个用例)
+├── src/               # 插件源码(config/index/invariant/origin/pages/password/proxy/
+│                      #   routes/secret/session-cookie/store/supervisor/upgrade/upstream-jar)
+├── tests/             # 15 个测试文件 + fixtures/fake-dsh-web.mjs(105 个用例)
 ├── docs/              # 拆分文档(配置/脚本/使用/运维/部署/排查)
 ├── examples/          # 局域网 / 回环两种组合 patch 示例
-├── scripts/           # build.sh / test.sh / setup-deps.sh / start.sh / stop.sh / dsh-checkout.sh
+├── scripts/           # build.sh / test.sh / setup-deps.sh / start.sh / stop.sh /
+│                      #   dsh-checkout.sh / dsh-web-upstream.sh(上游启动包装)
 ├── lib/               # 构建产物(git 忽略)
 ├── data/              # 运行数据(git 忽略;账号库、密钥、每用户数据)
 └── package.json       # 依赖以 link: 指向检出内的包(见下)
@@ -20,7 +21,7 @@ dhx-gateway/
 
 ## 构建 / 测试
 
-- `./scripts/build.sh` 与 `./scripts/test.sh`(95/95),细节见[脚本一览](scripts.md)。
+- `./scripts/build.sh` 与 `./scripts/test.sh`(105/105),细节见[脚本一览](scripts.md)。
 
 ## 依赖形态
 

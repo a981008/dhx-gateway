@@ -52,6 +52,8 @@ scripts/stop.sh && scripts/start.sh
 # 用户上游会在下次访问时自动重拉
 ```
 
+> profile 的 `patchReload: live` 只热更新**配置**(cordis.patch.yml);改了 `src/` 并重建后必须重启网关,插件模块不会自动重载。
+
 ## 重置账号
 
 忘记管理员密码:停止网关 → 备份后删除 `<stateRoot>/users.json` → 启动 → 打印新的引导邀请重新建号。每用户数据不受影响。
