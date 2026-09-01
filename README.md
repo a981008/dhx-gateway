@@ -80,7 +80,7 @@ pnpm dsh --profile gateway
 dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<token>
 ```
 
-用浏览器打开该链接设置管理员用户名(小写字母/数字/短横线,≤32 字符)与密码(≥8 位)即完成初始化。此后管理员在 `/gw-admin` 为同事签发邀请。
+用浏览器打开该链接设置管理员用户名(小写字母/数字/短横线,≤32 字符)与密码(≥8 位)即完成初始化。此后管理员在 `/gw-admin` 为同事签发邀请。前台运行可直接 `pnpm dsh --profile gateway`;后台守护运行见下文[启停与日志](#启停与日志)。
 
 ## 配置参考
 
@@ -144,12 +144,29 @@ dhx-gateway: bootstrap invite (single use): http://192.168.10.19:8080/invite/<to
 
 ### 启停与日志
 
-本仓库检出内的部署附带了脚本(位于 `.dsh-home/`):
+项目自带服务脚本(后台守护运行、PID 文件、日志追加):
 
 ```sh
-.dsh-home/start-gateway.sh   # 后台启动,日志追加到 .dsh-home/gateway.log,PID 写入 gateway.pid
-.dsh-home/stop-gateway.sh    # 按 PID 停止
+scripts/start.sh   # 启动;已在运行则提示后原样退出
+scripts/stop.sh    # 停止:SIGTERM 优雅退出(等待最多 5 秒),超时 SIGKILL
 ```
+
+默认参数适配"项目位于检出内"的布局,全部可用环境变量覆盖:
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DSH_CHECKOUT` | 从脚本位置推断 | deepseek-harness 检出根;项目迁出检出后必须显式设置 |
+| `DSH_HOME_DEPLOY` | `<DSH_CHECKOUT>/.dsh-home` | 网关数据主目录(变量名避开 harness 自身的 `DSH_HOME`) |
+| `DSH_PROFILE` | `gateway` | 要启动的 profile 名 |
+
+```sh
+# 自定义示例:独立数据目录 + 其他 profile
+DSH_HOME_DEPLOY=/srv/dhx DSH_PROFILE=gateway scripts/start.sh
+```
+
+- 启动方式:存在 `<DSH_CHECKOUT>/apps/cli/src/bin.ts` 时用 tsx 源启动;否则若 `dsh` 在 PATH 上则用 `dsh --profile <name>`;两者皆无时报错退出。
+- 日志追加到 `<DSH_HOME>/gateway.log`,PID 写入 `<DSH_HOME>/gateway.pid`;`stop.sh` 按 PID 停止,含陈旧 PID 清理。
+- SIGTERM 会触发网关的完整回收:停止所有用户上游进程、落盘状态后再退出。
 
 ### 备份与迁移
 
@@ -233,7 +250,7 @@ dhx-gateway/
 │                      #   secret/session-cookie/store/supervisor/upstream-jar)
 ├── tests/             # 13 个测试文件 + fixtures/fake-dsh-web.mjs(95 个用例)
 ├── examples/          # 局域网 / 回环两种组合 patch 示例
-├── scripts/           # build.sh / test.sh / setup-deps.sh
+├── scripts/           # build.sh / test.sh / setup-deps.sh / start.sh / stop.sh
 ├── lib/               # 构建产物(git 忽略)
 └── package.json       # 依赖以 link: 指向检出内的包(见下)
 ```
