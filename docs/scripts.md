@@ -7,6 +7,7 @@
 
 | 脚本 | 用途 | 典型用法 |
 | --- | --- | --- |
+| `patch-dsh-settings.sh` | **dsh 设置页补丁管理器**(多用户网关部署):在 dsh 检出的 `packages/client/connection` 客户端 fence 注入 `DSH_CLIENT_TRUST_ANY_PAGE` 构建期开关并重建 bundle,使局域网地址下设置页可用;幂等(重复执行不重复注入),上游改了锚点行会报错拒改;`--status` 只读检查,`--revert` 还原上游行为,`--restart` 应用后顺带重启网关。**dsh 升级后需重跑** | `./scripts/patch-dsh-settings.sh`、`./scripts/patch-dsh-settings.sh --status` |
 | `deploy.sh` | **一键部署(新机器/远程)**:装依赖 → 构建 → 创建 profile → 写组合 patch → 启动,等价快速开始的第 2–4 步;幂等,已存在的 profile 与 `cordis.patch.yml` 不会被覆盖。参数:`--host 0.0.0.0\|127.0.0.1`、`--port N`、`--public-origin URL`、`--dsh-home DIR`、`--no-start` | `./scripts/deploy.sh`、`./scripts/deploy.sh --port 9000 --public-origin https://dsh.example.com --no-start` |
 | `build.sh` | 编译 `src/` → `lib/`(tsc)。首次部署、每次改码后执行 | `./scripts/build.sh` |
 | `test.sh` | 运行完整测试套件(vitest,105 个用例);参数直通 vitest | `./scripts/test.sh`、过滤:`./scripts/test.sh -t store` |

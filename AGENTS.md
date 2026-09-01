@@ -12,7 +12,7 @@ dsh(DeepSeek Harness)的多用户网关 cordis 插件:邀请码账号 + HMAC 签
 | --- | --- | --- |
 | `src/` | 14 个模块:config/index/invariant/origin/pages/password/proxy/routes/secret/session-cookie/store/supervisor/upgrade/upstream-jar | 是 |
 | `tests/` | 15 个 spec + `fixtures/fake-dsh-web.mjs`(105 个用例,vitest) | 是 |
-| `scripts/` | 8 个 POSIX sh:build / test / setup-deps / start / stop / dsh-checkout / dsh-web-upstream / deploy | 是 |
+| `scripts/` | 9 个 POSIX sh:build / test / setup-deps / start / stop / dsh-checkout / dsh-web-upstream / deploy / patch-dsh-settings | 是 |
 | `docs/` | 拆分文档(配置/脚本/使用/运维/部署/排查/开发) | 是 |
 | `examples/` | 局域网 / 回环两种组合 patch 示例 | 是 |
 | `lib/`、`node_modules/`、`data/` | 构建产物、依赖、运行数据 | **否(.gitignore)** |
@@ -23,6 +23,7 @@ dsh(DeepSeek Harness)的多用户网关 cordis 插件:邀请码账号 + HMAC 签
 - 测试:`./scripts/test.sh`(全量 105;过滤:`./scripts/test.sh -t <pattern>`)
 - 启停:`./scripts/start.sh` / `./scripts/stop.sh`(写 `data/gateway.{log,pid}`)
 - 一键部署(新机器):`./scripts/deploy.sh`(装依赖 → 构建 → 创建 profile → 写 patch → 启动;幂等)
+- dsh 设置页补丁:`./scripts/patch-dsh-settings.sh`(dsh 升级后重跑;`--status`/`--revert`/`--restart`)
 - 依赖重建(检出换位后):`DSH_CHECKOUT=<检出> ./scripts/setup-deps.sh`
 
 ## 硬性契约(测试断言,改动必须同步 tests/)

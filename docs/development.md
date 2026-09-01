@@ -13,7 +13,8 @@ dhx-gateway/
 ├── docs/              # 拆分文档(配置/脚本/使用/运维/部署/排查)
 ├── examples/          # 局域网 / 回环两种组合 patch 示例
 ├── scripts/           # build.sh / test.sh / setup-deps.sh / start.sh / stop.sh /
-│                      #   dsh-checkout.sh / dsh-web-upstream.sh(上游启动包装)
+│                      #   dsh-checkout.sh / dsh-web-upstream.sh(上游启动包装)/
+│                      #   deploy.sh(一键部署)/ patch-dsh-settings.sh(dsh 补丁)
 ├── lib/               # 构建产物(git 忽略)
 ├── data/              # 运行数据(git 忽略;账号库、密钥、每用户数据)
 └── package.json       # 依赖以 link: 指向检出内的包(见下)
