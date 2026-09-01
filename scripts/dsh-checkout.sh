@@ -12,6 +12,6 @@ if [ -f "$PROJECT_ROOT/../apps/cli/src/bin.ts" ]; then
 elif [ -f "$PROJECT_ROOT/../deepseek-harness/apps/cli/src/bin.ts" ]; then
   cd "$PROJECT_ROOT/../deepseek-harness" && pwd
 else
-  echo "error: cannot locate the deepseek-harness checkout; set DSH_CHECKOUT" >&2
+  echo "error: 无法定位 deepseek-harness 检出根;请设置 DSH_CHECKOUT" >&2
   exit 1
 fi
