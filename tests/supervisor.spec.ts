@@ -51,9 +51,11 @@ describe('upstream instance supervisor', () => {
       const fixture = JSON.parse(readFileSync(join(supervisor.homeDirectory('alice'), 'fixture.json'), 'utf8')) as { pid: number; port: number }
       expect(fixture.port).toBe(first.port)
       const response = await fetch(`http://127.0.0.1:${String(first.port)}/probe`)
-      const body = await response.json() as { path: string; dshHome: string }
+      const body = await response.json() as { path: string; dshHome: string; fsFence: string }
       expect(body.path).toBe('/probe')
       expect(body.dshHome).toBe(supervisor.homeDirectory('alice'))
+      // The child's filesystem fence is the user's own subtree root.
+      expect(body.fsFence).toBe(supervisor.options.usersRoot + '/alice')
     } finally {
       await supervisor.dispose()
     }

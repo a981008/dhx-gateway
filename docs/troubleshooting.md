@@ -18,7 +18,7 @@
 | 局域网设备打不开 | 确认 `host: 0.0.0.0`;检查防火墙;WSL 见[部署形态](deployment.md);本机自测时留意环境变量代理(`http_proxy`)会截走请求,`curl --noproxy '*'` 验证。 |
 | 登录后白屏/超时 | 上游启动超过 `startTimeoutMs`;源码运行方式调到 `60000`,并看网关日志中该用户的启动输出。 |
 | 页面一直显示「连接中」 | dsh web 的流式 WebSocket(`/api/remote.mux` upgrade)没有打通:确认网关为修过该能力的版本(升级代理需 `webServer.registerUpgrade`,见 `src/upgrade.ts`);旧版本网关只代理普通 HTTP,upgrade 请求在 webserver 处查不到路由被直接断开,前端无限重连。 |
-| 请求偶发 502/504 | 上游崩溃进入冷却重启;查 `<usersRoot>/<user>/home` 内的日志与网关日志。 |
+| 请求偶发 502/504;或「工作区实例无法启动:… exited recently; retry in a few seconds」 | 上游崩溃进入冷却重启。常见原因:① **机器重启/WSL 关机**:网关与全部上游一起灭失,而 pid 文件是旧的 —— `./scripts/start.sh` 重新拉起即可(上游在首次访问时自动重启);② **孤儿上游占用 per-user home**:旧版 stop.sh 只杀网关,上游变孤儿,与新拉起的上游冲突 —— 新版以 setsid 独立进程组启动、stop.sh 按组整杀,`./scripts/stop.sh && ./scripts/start.sh` 即清理+重启;③ 查真实退出原因:手动按该用户环境复现 —— `cd <dsh检出> && DSH_HOME=<usersRoot>/<用户>/home timeout 15 node --import tsx/esm apps/cli/src/bin.ts web --host 127.0.0.1 --port 0 --no-open`,直接看输出。 |
 | 启动不打印邀请 | 账号库已有用户(正常);或 `printBootstrapInvite: false`。 |
 | 设置页报「settings are unavailable in this browser」(无法配置 API Key) | dsh 客户端默认只允许回环页面(`localhost`/`127.*`)进入设置面。本部署通过 `./scripts/patch-dsh-settings.sh` 在 dsh 检出中维护本地补丁(构建期开关 `DSH_CLIENT_TRUST_ANY_PAGE`,网关伺服的 bundle 已含该改动)。**dsh 升级(git pull)后重跑该脚本即可**;`--status` 查看补丁状态,`--revert` 还原上游行为。应急替代:SSH 隧道 `ssh -N -L 8080:127.0.0.1:8080 <server>` 走回环配置;或管理员直接写该用户 home 的 `.credentials.yaml`(dsh 凭据正牌存储,热加载)。 |
 | `dshCommand` 找不到可执行 | 该命令以**绝对路径**解析最稳(网关以用户工作区为 cwd 拉起子进程)。 |

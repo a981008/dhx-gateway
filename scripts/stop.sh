@@ -17,14 +17,16 @@ if ! kill -0 "$PID" 2>/dev/null; then
   exit 0
 fi
 
-kill "$PID"
+# 按进程组整杀(setsid 启动的网关 PGID=PID):连带终止全部上游子进程,
+# 避免孤儿上游残留并占用 per-user home,导致下次拉起冲突。
+kill -- "-$PID" 2>/dev/null || kill "$PID" 2>/dev/null || true
 i=0
 while kill -0 "$PID" 2>/dev/null && [ "$i" -lt 50 ]; do
   sleep 0.1
   i=$((i + 1))
 done
 if kill -0 "$PID" 2>/dev/null; then
-  kill -9 "$PID"
+  kill -9 -- "-$PID" 2>/dev/null || kill -9 "$PID" 2>/dev/null || true
   echo "DHX Gateway force-killed (pid $PID)"
 else
   echo "DHX Gateway stopped (pid $PID)"

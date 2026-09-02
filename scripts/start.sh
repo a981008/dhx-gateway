@@ -41,6 +41,8 @@ else
   exit 1
 fi
 
-DSH_HOME="$DSH_HOME" nohup "$@" >> "$LOG_FILE" 2>&1 &
+# setsid:网关自成一个会话/进程组,上游子进程默认继承同组 ——
+# stop.sh 按组整杀,网关与所有上游一起退,不再留孤儿上游占用 per-user home。
+DSH_HOME="$DSH_HOME" setsid nohup "$@" >> "$LOG_FILE" 2>&1 &
 echo $! > "$PID_FILE"
 echo "DHX Gateway started (pid $(cat "$PID_FILE")), profile $DSH_PROFILE, log $LOG_FILE"

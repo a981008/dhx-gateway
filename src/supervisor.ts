@@ -1,6 +1,7 @@
 /**
  * Per-user upstream instance supervisor: one `dsh web` child process per
  * account, each with its own `DSH_HOME`, started on demand against an
+ * explicit filesystem fence (`DSH_HOST_FS_FENCE` = the user's subtree root),
  * OS-assigned loopback port, readiness taken from the process's ready URL
  * line, and optional idle shutdown. The URL line is the upstream's documented
  * supervisor protocol; nothing else about the child is parsed.
@@ -67,12 +68,16 @@ export interface RunningRow {
   lastActivityMs: number
 }
 
-function childEnvironment(home: string): NodeJS.ProcessEnv {
+function childEnvironment(home: string, fenceRoot: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {}
   for (const [name, value] of Object.entries(process.env)) {
     if (value !== undefined && !STRIPPED_ENV_KEYS.has(name)) env[name] = value
   }
   env.DSH_HOME = home
+  // Filesystem fence for the upstream's directory-picker and workspace
+  // registration (enforced by the local dsh patch): the serving user may
+  // only browse and register inside their own subtree under usersRoot.
+  env.DSH_HOST_FS_FENCE = fenceRoot
   return env
 }
 
@@ -211,7 +216,8 @@ export class InstanceSupervisor {
         [...this.options.dshCommand.slice(1), '--host', '127.0.0.1', '--port', '0', '--no-open'],
         {
           cwd: workspaces,
-          env: childEnvironment(home),
+          env: childEnvironment(home, join(this.options.usersRoot, user)),
+
           stdio: ['ignore', 'pipe', 'pipe'],
           windowsHide: true,
         },

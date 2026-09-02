@@ -99,7 +99,7 @@ dhx-gateway: pick the address your members actually use, or set publicOrigin to 
 | 文档 | 内容 |
 | --- | --- |
 | [docs/configuration.md](docs/configuration.md) | 插件全部配置字段与 webserver 组合要点 |
-| [docs/scripts.md](docs/scripts.md) | 9 个脚本的用途、公共行为、环境变量 |
+| [docs/scripts.md](docs/scripts.md) | 10 个脚本的用途、公共行为、环境变量 |
 | [docs/usage.md](docs/usage.md) | 账号与邀请、保留路径、代理行为 |
 | [docs/operations.md](docs/operations.md) | 数据布局、启停与日志、备份迁移、升级、重置 |
 | [docs/deployment.md](docs/deployment.md) | HTTPS 反代、systemd 常驻、WSL 注意 |

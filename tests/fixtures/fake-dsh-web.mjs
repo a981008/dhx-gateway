@@ -92,6 +92,7 @@ const server = createServer((req, res) => {
       connection: req.headers.connection ?? null,
       body: chunks.length === 0 ? null : Buffer.concat(chunks).toString('utf8'),
       dshHome: process.env.DSH_HOME ?? null,
+      fsFence: process.env.DSH_HOST_FS_FENCE ?? null,
       hasDeepseekKey: 'DEEPSEEK_API_KEY' in process.env,
       pid: process.pid,
     }))
